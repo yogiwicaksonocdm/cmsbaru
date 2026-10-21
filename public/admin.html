@@ -5,12 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard Admin | Node.js CMS</title>
     <meta name="robots" content="noindex, nofollow">
-    <!-- Tailwind CSS untuk styling cepat -->
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="bg-gray-100 font-sans leading-normal tracking-normal">
 
-    <!-- ============ VIEW: LOGIN ============ -->
     <div id="loginView" class="min-h-screen flex items-center justify-center px-4">
         <div class="w-full max-w-md">
             <div class="text-center mb-6">
@@ -40,9 +38,7 @@
         </div>
     </div>
 
-    <!-- ============ VIEW: DASHBOARD ============ -->
     <div id="dashboardView" class="hidden min-h-screen flex flex-col">
-        <!-- Header -->
         <header class="bg-white border-b border-gray-200 sticky top-0 z-10">
             <div class="container mx-auto px-6 py-4 max-w-5xl flex items-center justify-between">
                 <div class="flex items-center gap-3">
@@ -53,180 +49,163 @@
                     </div>
                 </div>
                 <div class="flex items-center gap-2">
-                    <a href="/" target="_blank" rel="noopener"
-                        class="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition">Lihat Homepage</a>
-                    <button id="logoutBtn"
-                        class="text-sm bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg transition">Keluar</button>
+                    <a href="/" target="_blank" rel="noopener" class="text-sm text-gray-600 hover:text-gray-900 px-3 py-2 rounded-lg hover:bg-gray-100 transition">Lihat Homepage</a>
+                    <button id="logoutBtn" class="text-sm bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-lg transition">Keluar</button>
                 </div>
             </div>
         </header>
 
         <main class="container mx-auto px-6 py-8 max-w-5xl flex-1">
-            <!-- Notifikasi -->
             <div id="alertBox" class="hidden mb-6 rounded-lg border px-4 py-3 text-sm"></div>
 
-            <!-- Tab: Postingan | Pengaturan -->
             <div class="flex items-center gap-2 mb-8 border-b border-gray-200">
-                <button type="button" data-tab="posts"
-                    class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px text-blue-600 border-blue-600">Postingan</button>
-                <button type="button" data-tab="settings"
-                    class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px text-gray-500 border-transparent hover:text-gray-800">Pengaturan</button>
+                <button type="button" data-tab="posts" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px text-blue-600 border-blue-600">Postingan</button>
+                <button type="button" data-tab="comments" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px text-gray-500 border-transparent hover:text-gray-800">Komentar</button>
+                <button type="button" data-tab="settings" class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px text-gray-500 border-transparent hover:text-gray-800">Pengaturan</button>
             </div>
 
             <div id="tabStats">
-
-            <!-- Statistik -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                    <p class="text-sm text-gray-500">Total Konten</p>
-                    <p id="statTotal" class="text-3xl font-bold text-gray-800 mt-1">0</p>
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <p class="text-sm text-gray-500">Total Konten</p>
+                        <p id="statTotal" class="text-3xl font-bold text-gray-800 mt-1">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <p class="text-sm text-gray-500">Terbit</p>
+                        <p id="statPublished" class="text-3xl font-bold text-green-600 mt-1">0</p>
+                    </div>
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+                        <p class="text-sm text-gray-500">Draf</p>
+                        <p id="statDraft" class="text-3xl font-bold text-amber-500 mt-1">0</p>
+                    </div>
                 </div>
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                    <p class="text-sm text-gray-500">Terbit</p>
-                    <p id="statPublished" class="text-3xl font-bold text-green-600 mt-1">0</p>
-                </div>
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-                    <p class="text-sm text-gray-500">Draf</p>
-                    <p id="statDraft" class="text-3xl font-bold text-amber-500 mt-1">0</p>
-                </div>
-            </div>
-
             </div>
 
             <div id="tabSettings" class="hidden">
-
-            <!-- Pengaturan Hero Homepage -->
-            <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
-                <div class="flex items-center justify-between flex-wrap gap-2">
-                    <div>
-                        <h2 class="text-lg font-semibold text-gray-700">Hero Section Homepage</h2>
-                        <p class="text-sm text-gray-500">Atur background dan caption bagian atas homepage publik.</p>
-                    </div>
-                    <a href="/" target="_blank" rel="noopener" class="text-sm text-blue-600 font-semibold hover:underline">Lihat di homepage &rarr;</a>
-                </div>
-
-                <form id="heroForm" class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div class="space-y-4">
+                <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+                    <div class="flex items-center justify-between flex-wrap gap-2">
                         <div>
-                            <label for="heroTitle" class="block text-gray-700 text-sm font-bold mb-2">Caption / Judul</label>
-                            <input type="text" id="heroTitle" maxlength="120" required placeholder="Selamat Datang di CMS Kami"
-                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <h2 class="text-lg font-semibold text-gray-700">Hero Section Homepage</h2>
+                            <p class="text-sm text-gray-500">Atur background dan caption bagian atas homepage publik.</p>
                         </div>
-                        <div>
-                            <label for="heroSubtitle" class="block text-gray-700 text-sm font-bold mb-2">Teks Pendukung</label>
-                            <textarea id="heroSubtitle" rows="3" maxlength="300" placeholder="Kalimat singkat di bawah judul hero"
-                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                        </div>
-                        <div>
-                            <label for="heroImage" class="block text-gray-700 text-sm font-bold mb-2">URL Background (gambar)</label>
-                            <input type="url" id="heroImage" placeholder="https://contoh.com/gambar.jpg"
-                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <p class="text-xs text-gray-400 mt-1">Kosongkan untuk memakai gradasi warna bawaan.</p>
-                        </div>
-                        <button type="submit" id="heroSaveBtn"
-                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold">Simpan Hero</button>
+                        <a href="/" target="_blank" rel="noopener" class="text-sm text-blue-600 font-semibold hover:underline">Lihat di homepage &rarr;</a>
                     </div>
 
-                    <!-- Preview langsung -->
-                    <div>
-                        <p class="text-sm font-bold text-gray-700 mb-2">Preview</p>
-                        <div class="relative h-48 rounded-lg overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 text-white flex items-center">
-                            <div id="heroPreviewBg" class="absolute inset-0 bg-cover bg-center hidden"></div>
-                            <div id="heroPreviewOverlay" class="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/30 hidden"></div>
-                            <div class="relative px-5">
-                                <p id="heroPreviewTitle" class="text-lg font-bold">Judul hero</p>
-                                <p id="heroPreviewSubtitle" class="text-sm text-gray-100 mt-1 line-clamp-2">Teks pendukung hero</p>
+                    <form id="heroForm" class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="space-y-4">
+                            <div>
+                                <label for="heroTitle" class="block text-gray-700 text-sm font-bold mb-2">Caption / Judul</label>
+                                <input type="text" id="heroTitle" maxlength="120" required placeholder="Selamat Datang di CMS Kami" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                             </div>
+                            <div>
+                                <label for="heroSubtitle" class="block text-gray-700 text-sm font-bold mb-2">Teks Pendukung</label>
+                                <textarea id="heroSubtitle" rows="3" maxlength="300" placeholder="Kalimat singkat di bawah judul hero" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                            </div>
+                            <div>
+                                <label for="heroImage" class="block text-gray-700 text-sm font-bold mb-2">URL Background (gambar)</label>
+                                <input type="url" id="heroImage" placeholder="https://contoh.com/gambar.jpg" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p class="text-xs text-gray-400 mt-1">Kosongkan untuk memakai gradasi warna bawaan.</p>
+                            </div>
+                            <button type="submit" id="heroSaveBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold">Simpan Hero</button>
                         </div>
-                        <p id="heroImageError" class="hidden text-xs text-red-600 mt-2">Gambar tidak dapat dimuat, periksa URL background.</p>
+
+                        <div>
+                            <p class="text-sm font-bold text-gray-700 mb-2">Preview</p>
+                            <div class="relative h-48 rounded-lg overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 text-white flex items-center">
+                                <div id="heroPreviewBg" class="absolute inset-0 bg-cover bg-center hidden"></div>
+                                <div id="heroPreviewOverlay" class="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/30 hidden"></div>
+                                <div class="relative px-5">
+                                    <p id="heroPreviewTitle" class="text-lg font-bold">Judul hero</p>
+                                    <p id="heroPreviewSubtitle" class="text-sm text-gray-100 mt-1 line-clamp-2">Teks pendukung hero</p>
+                                </div>
+                            </div>
+                            <p id="heroImageError" class="hidden text-xs text-red-600 mt-2">Gambar tidak dapat dimuat, periksa URL background.</p>
+                        </div>
+                    </form>
+                </section>
+            </div>
+
+            <div id="tabComments" class="hidden">
+                <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+                    <div class="flex items-center justify-between flex-wrap gap-2 mb-4">
+                        <div>
+                            <h2 class="text-lg font-semibold text-gray-700">Moderasi Komentar</h2>
+                            <p class="text-sm text-gray-500">Semua komentar baru menunggu persetujuan admin sebelum tampil di homepage.</p>
+                        </div>
                     </div>
-                </form>
-            </section>
+                    <div id="commentsList" class="space-y-4"></div>
+                </section>
             </div>
 
             <div id="tabPosts">
-            <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
-                <!-- Form Konten -->
-                <section class="lg:col-span-2">
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:sticky lg:top-24">
-                        <h2 id="formTitle" class="text-lg font-semibold mb-4 text-gray-700">Tambah Postingan Baru</h2>
-                        <div id="dbWarning" class="hidden mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"></div>
-                        <form id="postForm" class="space-y-4">
-                            <div>
-                                <label for="title" class="block text-gray-700 text-sm font-bold mb-2">Judul</label>
-                                <input type="text" id="title" required
-                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label for="content" class="block text-gray-700 text-sm font-bold mb-2">Konten</label>
-                                <textarea id="content" rows="6" required
-                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                                <div class="flex items-center justify-between gap-2 mt-2 flex-wrap">
+                <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
+                    <section class="lg:col-span-2">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 lg:sticky lg:top-24">
+                            <h2 id="formTitle" class="text-lg font-semibold mb-4 text-gray-700">Tambah Postingan Baru</h2>
+                            <div id="dbWarning" class="hidden mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-700"></div>
+                            <form id="postForm" class="space-y-4">
+                                <div>
+                                    <label for="title" class="block text-gray-700 text-sm font-bold mb-2">Judul</label>
+                                    <input type="text" id="title" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label for="content" class="block text-gray-700 text-sm font-bold mb-2">Konten</label>
+                                    <textarea id="content" rows="6" required class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                    <div class="flex items-center justify-between gap-2 mt-2 flex-wrap">
+                                        <div class="flex items-center gap-2 flex-wrap">
+                                            <button type="button" id="generateBtn" class="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition font-semibold">Generate Konten</button>
+                                            <button type="button" id="insertPageBreakBtn" class="text-sm bg-slate-600 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 transition font-semibold">Page Break</button>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            <label for="keywords" class="text-xs text-gray-500">Kata kunci</label>
+                                            <input type="text" id="keywords" placeholder="opsional, pisahkan dengan koma" class="text-sm px-2 py-1 border rounded-lg w-52 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="space-y-3">
+                                    <div>
+                                        <label for="image" class="block text-gray-700 text-sm font-bold mb-2">Gambar Utama</label>
+                                        <input type="url" id="image" placeholder="https://contoh.com/gambar.jpg" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <div>
+                                        <label for="thumbnail" class="block text-gray-700 text-sm font-bold mb-2">Thumbnail</label>
+                                        <input type="url" id="thumbnail" placeholder="https://contoh.com/thumbnail.jpg" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
                                     <div class="flex items-center gap-2 flex-wrap">
-                                        <button type="button" id="generateBtn"
-                                            class="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition font-semibold">Generate Konten</button>
-                                        <button type="button" id="insertPageBreakBtn"
-                                            class="text-sm bg-slate-600 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 transition font-semibold">Page Break</button>
+                                        <button type="button" id="generateMediaBtn" class="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition font-semibold">Generate Picture & Thumbnail</button>
                                     </div>
-                                    <div class="flex items-center gap-2">
-                                        <label for="keywords" class="text-xs text-gray-500">Kata kunci</label>
-                                        <input type="text" id="keywords" placeholder="opsional, pisahkan dengan koma"
-                                            class="text-sm px-2 py-1 border rounded-lg w-52 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <div id="mediaPreviewWrapper" class="hidden overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                                        <img id="mediaPreview" alt="Preview media" class="w-full h-40 object-cover">
                                     </div>
                                 </div>
-                            </div>
-                            <div class="space-y-3">
                                 <div>
-                                    <label for="image" class="block text-gray-700 text-sm font-bold mb-2">Gambar Utama</label>
-                                    <input type="url" id="image" placeholder="https://contoh.com/gambar.jpg"
-                                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <label for="author" class="block text-gray-700 text-sm font-bold mb-2">Penulis</label>
+                                    <input type="text" id="author" placeholder="Admin" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 </div>
                                 <div>
-                                    <label for="thumbnail" class="block text-gray-700 text-sm font-bold mb-2">Thumbnail</label>
-                                    <input type="url" id="thumbnail" placeholder="https://contoh.com/thumbnail.jpg"
-                                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <label for="category" class="block text-gray-700 text-sm font-bold mb-2">Kategori</label>
+                                    <input type="text" id="category" list="categoryList" maxlength="40" placeholder="Umum" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    <datalist id="categoryList"></datalist>
                                 </div>
-                                <div class="flex items-center gap-2 flex-wrap">
-                                    <button type="button" id="generateMediaBtn"
-                                        class="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition font-semibold">Generate Picture & Thumbnail</button>
+                                <label class="flex items-center gap-2 text-sm text-gray-700">
+                                    <input type="checkbox" id="published" class="w-4 h-4 rounded border-gray-300 text-blue-600">
+                                    Terbitkan langsung (tampil di homepage)
+                                </label>
+                                <div class="flex items-center gap-2 pt-2">
+                                    <button type="submit" id="saveBtn" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold">Simpan Postingan</button>
+                                    <button type="button" id="cancelEditBtn" class="hidden text-gray-600 px-4 py-2 rounded-lg border hover:bg-gray-50 transition">Batal Edit</button>
                                 </div>
-                                <div id="mediaPreviewWrapper" class="hidden overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
-                                    <img id="mediaPreview" alt="Preview media" class="w-full h-40 object-cover">
-                                </div>
-                            </div>
-                            <div>
-                                <label for="author" class="block text-gray-700 text-sm font-bold mb-2">Penulis</label>
-                                <input type="text" id="author" placeholder="Admin"
-                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            </div>
-                            <div>
-                                <label for="category" class="block text-gray-700 text-sm font-bold mb-2">Kategori</label>
-                                <input type="text" id="category" list="categoryList" maxlength="40" placeholder="Umum"
-                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-                                <datalist id="categoryList"></datalist>
-                            </div>
-                            <label class="flex items-center gap-2 text-sm text-gray-700">
-                                <input type="checkbox" id="published" class="w-4 h-4 rounded border-gray-300 text-blue-600">
-                                Terbitkan langsung (tampil di homepage)
-                            </label>
-                            <div class="flex items-center gap-2 pt-2">
-                                <button type="submit" id="saveBtn"
-                                    class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold">Simpan Postingan</button>
-                                <button type="button" id="cancelEditBtn"
-                                    class="hidden text-gray-600 px-4 py-2 rounded-lg border hover:bg-gray-50 transition">Batal Edit</button>
-                            </div>
-                        </form>
-                    </div>
-                </section>
+                            </form>
+                        </div>
+                    </section>
 
-                <!-- Daftar Konten -->
-                <section class="lg:col-span-3">
-                    <h2 class="text-lg font-semibold mb-4 text-gray-700">Semua Postingan</h2>
-                    <div id="postsList" class="space-y-4">
-                        <p class="text-gray-500 text-sm">Memuat data...</p>
-                    </div>
-                </section>
-            </div>
+                    <section class="lg:col-span-3">
+                        <h2 class="text-lg font-semibold mb-4 text-gray-700">Semua Postingan</h2>
+                        <div id="postsListAdmin" class="space-y-4">
+                            <p class="text-gray-500 text-sm">Memuat data...</p>
+                        </div>
+                    </section>
+                </div>
             </div>
         </main>
     </div>
@@ -234,16 +213,15 @@
     <script>
         const TOKEN_KEY = 'cms_admin_token';
         let editingId = null;
-
         const loginView = document.getElementById('loginView');
         const dashboardView = document.getElementById('dashboardView');
         const loginError = document.getElementById('loginError');
         const alertBox = document.getElementById('alertBox');
-        const postsList = document.getElementById('postsList');
+        const postsListAdmin = document.getElementById('postsListAdmin');
         const postForm = document.getElementById('postForm');
         const dbWarning = document.getElementById('dbWarning');
+        const commentsList = document.getElementById('commentsList');
 
-        /* ---------- Helper ---------- */
         function escapeHtml(text) {
             return String(text ?? '')
                 .replace(/&/g, '&amp;')
@@ -315,7 +293,6 @@
             wrapper.classList.remove('hidden');
         }
 
-        // Tangani 401 (token kedaluwarsa / tidak valid) dari semua request admin
         async function apiFetch(url, options = {}) {
             const response = await fetch(url, options);
             if (response.status === 401) {
@@ -325,7 +302,6 @@
             return response;
         }
 
-        /* ---------- Autentikasi ---------- */
         document.getElementById('loginForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const btn = document.getElementById('loginBtn');
@@ -344,6 +320,7 @@
                 document.getElementById('password').value = '';
                 showDashboard();
                 fetchPosts();
+                fetchCommentModeration();
                 loadSettings();
             } catch (error) {
                 loginError.textContent = error.message;
@@ -358,7 +335,6 @@
             showLogin('Anda telah keluar. Silakan login kembali untuk mengelola konten.');
         });
 
-        /* ---------- Pengaturan hero homepage ---------- */
         const heroForm = document.getElementById('heroForm');
 
         function updateHeroPreview() {
@@ -388,9 +364,6 @@
             document.getElementById(id).addEventListener('input', updateHeroPreview);
         });
 
-        // Peringatkan bila URL background tidak bisa dimuat browser.
-        // (Elemen div tidak memancarkan event error untuk background-image,
-        //  jadi gunakan objek Image terpisah untuk mengujinya.)
         let heroImageProbe = null;
         function probeHeroImage(url) {
             const imageError = document.getElementById('heroImageError');
@@ -404,19 +377,15 @@
                 return;
             }
             heroImageProbe = new Image();
-            heroImageProbe.onload = function () {
-                imageError.classList.add('hidden');
-            };
-            heroImageProbe.onerror = function () {
-                imageError.classList.remove('hidden');
-            };
+            heroImageProbe.onload = function () { imageError.classList.add('hidden'); };
+            heroImageProbe.onerror = function () { imageError.classList.remove('hidden'); };
             heroImageProbe.src = url;
         }
 
         async function loadSettings() {
             try {
                 const response = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
-                if (!response.ok) return; // database belum siap: biarkan kosong
+                if (!response.ok) return;
                 const settings = await response.json();
                 const hero = settings.hero || {};
                 document.getElementById('heroTitle').value = hero.title || '';
@@ -450,7 +419,6 @@
             }
         });
 
-        /* ---------- Muat & render postingan ---------- */
         async function fetchPosts() {
             try {
                 const response = await apiFetch('/api/admin/posts', { headers: { Authorization: `Bearer ${getToken()}` } });
@@ -458,7 +426,7 @@
                     const data = await response.json().catch(() => ({}));
                     dbWarning.textContent = data.error || 'Database belum siap.';
                     dbWarning.classList.remove('hidden');
-                    postsList.innerHTML = '<p class="text-gray-500 text-sm">Data tidak dapat dimuat.</p>';
+                    postsListAdmin.innerHTML = '<p class="text-gray-500 text-sm">Data tidak dapat dimuat.</p>';
                     return;
                 }
                 dbWarning.classList.add('hidden');
@@ -468,18 +436,17 @@
                 document.getElementById('statPublished').textContent = posts.filter(p => p.published).length;
                 document.getElementById('statDraft').textContent = posts.filter(p => !p.published).length;
 
-                // Isi saran kategori dari postingan yang ada
                 const categories = [...new Set(posts.map(p => p.category || 'Umum'))].sort();
                 document.getElementById('categoryList').innerHTML = categories
                     .map(c => `<option value="${escapeHtml(c)}">`)
                     .join('');
 
                 if (posts.length === 0) {
-                    postsList.innerHTML = '<p class="text-gray-500 text-sm bg-white border border-dashed border-gray-300 rounded-xl p-6 text-center">Belum ada postingan. Tambahkan lewat form di samping.</p>';
+                    postsListAdmin.innerHTML = '<p class="text-gray-500 text-sm bg-white border border-dashed border-gray-300 rounded-xl p-6 text-center">Belum ada postingan. Tambahkan lewat form di samping.</p>';
                     return;
                 }
 
-                postsList.innerHTML = posts.map(post => `
+                postsListAdmin.innerHTML = posts.map(post => `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5" data-id="${escapeHtml(post.id)}">
                         ${post.thumbnail ? `<img src="${escapeHtml(post.thumbnail)}" alt="${escapeHtml(post.title)}" class="w-full h-36 object-cover rounded-lg mb-4 border border-gray-200">` : ''}
                         <div class="flex items-start justify-between gap-3">
@@ -507,13 +474,12 @@
             } catch (error) {
                 if (error.message !== 'unauthorized') {
                     console.error('Gagal memuat post:', error);
-                    postsList.innerHTML = '<p class="text-red-600 text-sm">Gagal memuat postingan.</p>';
+                    postsListAdmin.innerHTML = '<p class="text-red-600 text-sm">Gagal memuat postingan.</p>';
                 }
             }
         }
 
-        /* ---------- Aksi pada daftar (edit / toggle / hapus) ---------- */
-        postsList.addEventListener('click', async (e) => {
+        postsListAdmin.addEventListener('click', async (e) => {
             const button = e.target.closest('button[data-action]');
             if (!button) return;
             const card = button.closest('[data-id]');
@@ -555,7 +521,6 @@
             }
         });
 
-        /* ---------- Simpan (buat / perbarui) ---------- */
         postForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const payload = {
@@ -577,7 +542,6 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.error || 'Gagal menyimpan postingan.');
-
                 showAlert('success', editingId ? 'Postingan diperbarui.' : 'Postingan disimpan.');
                 resetForm();
                 fetchPosts();
@@ -619,11 +583,12 @@
         document.getElementById('image').addEventListener('input', updateMediaPreview);
         document.getElementById('thumbnail').addEventListener('input', updateMediaPreview);
 
-        /* ---------- Tab Postingan | Pengaturan ---------- */
         const tabSections = {
             posts: [document.getElementById('tabStats'), document.getElementById('tabPosts')],
+            comments: [document.getElementById('tabComments')],
             settings: [document.getElementById('tabSettings')],
         };
+
         document.querySelectorAll('.tab-btn').forEach((btn) => {
             btn.addEventListener('click', () => {
                 const active = btn.dataset.tab;
@@ -637,11 +602,11 @@
                 Object.entries(tabSections).forEach(([name, sections]) => {
                     sections.forEach((section) => section && section.classList.toggle('hidden', name !== active));
                 });
-                if (active === 'settings') loadSettings(); // muat ulang pengaturan saat tab dibuka
+                if (active === 'settings') loadSettings();
+                if (active === 'comments') fetchCommentModeration();
             });
         });
 
-        /* ---------- Generate konten otomatis untuk editor ---------- */
         document.getElementById('generateBtn').addEventListener('click', async () => {
             const title = document.getElementById('title').value.trim();
             if (!title) {
@@ -710,7 +675,62 @@
             }
         });
 
-        /* ---------- Cek sesi saat halaman dibuka ---------- */
+        function renderCommentModeration(items) {
+            if (!items.length) {
+                commentsList.innerHTML = '<p class="text-gray-500 text-sm">Belum ada komentar yang masuk.</p>';
+                return;
+            }
+
+            commentsList.innerHTML = items.map(comment => `
+                <div class="border border-gray-200 rounded-xl p-4 bg-white">
+                    <div class="flex items-center justify-between gap-3 flex-wrap">
+                        <div>
+                            <p class="font-semibold text-gray-800">${escapeHtml(comment.name)}</p>
+                            <p class="text-xs text-gray-500">${escapeHtml(comment.status)} &middot; ${escapeHtml(formatDate(comment.createdAt))}</p>
+                        </div>
+                        <div class="flex gap-2">
+                            <button type="button" data-comment-action="approved" data-comment-id="${comment.id}" class="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg hover:bg-green-700">Setujui</button>
+                            <button type="button" data-comment-action="rejected" data-comment-id="${comment.id}" class="text-sm bg-red-600 text-white px-3 py-1.5 rounded-lg hover:bg-red-700">Tolak</button>
+                        </div>
+                    </div>
+                    <p class="mt-3 text-sm text-gray-700 whitespace-pre-line">${escapeHtml(comment.content)}</p>
+                </div>
+            `).join('');
+        }
+
+        async function fetchCommentModeration() {
+            try {
+                const response = await apiFetch('/api/admin/comments', { headers: authHeaders() });
+                if (!response.ok) throw new Error('Gagal memuat komentar.');
+                const comments = await response.json();
+                renderCommentModeration(comments);
+            } catch (error) {
+                if (error.message !== 'unauthorized') {
+                    commentsList.innerHTML = '<p class="text-red-600 text-sm">Gagal memuat komentar untuk moderasi.</p>';
+                }
+            }
+        }
+
+        commentsList.addEventListener('click', async (event) => {
+            const btn = event.target.closest('[data-comment-action]');
+            if (!btn) return;
+            const commentId = btn.dataset.commentId;
+            const status = btn.dataset.commentAction;
+            try {
+                const response = await apiFetch(`/api/admin/comments/${commentId}`, {
+                    method: 'PATCH',
+                    headers: authHeaders(),
+                    body: JSON.stringify({ status }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Gagal memproses komentar.');
+                showAlert('success', status === 'approved' ? 'Komentar disetujui.' : 'Komentar ditolak.');
+                fetchCommentModeration();
+            } catch (error) {
+                if (error.message !== 'unauthorized') showAlert('error', error.message);
+            }
+        });
+
         (async function init() {
             if (!getToken()) return showLogin();
             try {
@@ -718,9 +738,10 @@
                 if (!response.ok) return showLogin('Sesi berakhir. Silakan login kembali.');
                 showDashboard();
                 fetchPosts();
+                fetchCommentModeration();
                 loadSettings();
             } catch (error) {
-                // 401 sudah ditangani apiFetch -> showLogin
+                // 401 already handled
             }
         })();
     </script>
