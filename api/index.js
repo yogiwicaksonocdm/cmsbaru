@@ -10,12 +10,6 @@ app.use(express.json({ limit: '1mb' }));
 
 const PUBLIC_DIR = path.join(__dirname, '../public');
 
-/* ================================================================
- * 1. Inisialisasi Firebase Admin (Firestore)
- *    Di Vercel, kredensial dimasukkan via Environment Variables.
- *    Jika kredensial belum ada, server tetap jalan untuk menyajikan
- *    halaman statis, dan API mengembalikan 503 dengan pesan jelas.
- * ================================================================ */
 let db = null;
 let firebaseError = null;
 
@@ -26,13 +20,11 @@ if (!admin.apps.length) {
       credential: admin.credential.cert({
         projectId: FIREBASE_PROJECT_ID,
         clientEmail: FIREBASE_CLIENT_EMAIL,
-        // Menangani newline pada private key di environment variable
         privateKey: FIREBASE_PRIVATE_KEY.replace(/\\n/g, '\n'),
       }),
     });
   } else {
-    firebaseError =
-      'Kredensial Firebase belum lengkap. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, dan FIREBASE_PRIVATE_KEY.';
+    firebaseError = 'Kredensial Firebase belum lengkap. Set FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, dan FIREBASE_PRIVATE_KEY.';
   }
 }
 
@@ -42,19 +34,14 @@ try {
   firebaseError = error.message;
 }
 
-// Middleware: tolak request API yang membutuhkan database bila belum siap
 function requireDb(req, res, next) {
   if (!db) return res.status(503).json({ error: firebaseError || 'Database belum siap.' });
   next();
 }
 
-/* ================================================================
- * 2. Autentikasi admin (token HMAC, tanpa dependensi tambahan)
- *    Login dengan password admin -> token berlaku 8 jam.
- * ================================================================ */
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '';
 const AUTH_SECRET = process.env.ADMIN_AUTH_SECRET || ADMIN_PASSWORD;
-const TOKEN_TTL_MS = 8 * 60 * 60 * 1000; // 8 jam
+const TOKEN_TTL_MS = 8 * 60 * 60 * 1000;
 
 function hmac(value) {
   return crypto
@@ -91,12 +78,9 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// POST /api/auth/login -> { password } -> { token, expiresAt }
 app.post('/api/auth/login', (req, res) => {
   if (!ADMIN_PASSWORD) {
-    return res
-      .status(503)
-      .json({ error: 'ADMIN_PASSWORD belum diatur di environment variables server.' });
+    return res.status(503).json({ error: 'ADMIN_PASSWORD belum diatur di environment variables server.' });
   }
   const { password } = req.body || {};
   if (!password) return res.status(400).json({ error: 'Password wajib diisi.' });
@@ -107,14 +91,10 @@ app.post('/api/auth/login', (req, res) => {
   res.json({ token, expiresAt });
 });
 
-// GET /api/auth/me -> validasi sesi admin dari sisi dashboard
 app.get('/api/auth/me', requireAdmin, (req, res) => {
   res.json({ ok: true });
 });
 
-/* ================================================================
- * 3. Helper normalisasi dokumen post
- * ================================================================ */
 function normalizePost(doc) {
   const data = (typeof doc.data === 'function' ? doc.data() : doc) || {};
   return {
@@ -125,16 +105,24 @@ function normalizePost(doc) {
     category: String(data.category || 'Umum').trim() || 'Umum',
     image: String(data.image || '').trim(),
     thumbnail: String(data.thumbnail || '').trim(),
-    // Post lama (tanpa field published) tetap dianggap terbit
     published: data.published !== false,
     createdAt: data.createdAt || null,
     updatedAt: data.updatedAt || data.createdAt || null,
   };
 }
 
-/* ================================================================
- * 4. API PUBLIK (homepage) — hanya post yang sudah diterbitkan
- * ================================================================ */
+function normalizeComment(doc) {
+  const data = (typeof doc.data === 'function' ? doc.data() : doc) || {};
+  return {
+    id: doc.id,
+    postId: data.postId || '',
+    name: String(data.name || 'Pengguna').trim() || 'Pengguna',
+    content: String(data.content || '').trim(),
+    status: data.status || 'pending',
+    createdAt: data.createdAt || null,
+  };
+}
+
 app.get('/api/posts', requireDb, async (req, res) => {
   try {
     const snapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
@@ -145,9 +133,57 @@ app.get('/api/posts', requireDb, async (req, res) => {
   }
 });
 
-/* ================================================================
- * 5. API ADMIN — dilindungi token (CRUD penuh)
- * ================================================================ */
+app.get('/api/posts/:id/comments', requireDb, async (req, res) => {
+  try {
+    const snapshot = await db.collection('comments')
+      .where('postId', '==', req.params.id)
+      .where('status', '==', 'approved')
+      .orderBy('createdAt', 'desc')
+      .get();
+    res.status(200).json(snapshot.docs.map(normalizeComment));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/posts/:id/comments', requireDb, async (req, res) => {
+  try {
+    const { name, content } = req.body || {};
+    const postRef = db.collection('posts').doc(req.params.id);
+    const postSnap = await postRef.get();
+    if (!postSnap.exists) {
+      return res.status(404).json({ error: 'Postingan tidak ditemukan.' });
+    }
+
+    const safeName = String(name || '').trim();
+    const safeContent = String(content || '').trim();
+
+    if (!safeName || safeName.length < 2) {
+      return res.status(400).json({ error: 'Nama tidak boleh kosong dan minimal 2 karakter.' });
+    }
+    if (!safeContent || safeContent.length < 3) {
+      return res.status(400).json({ error: 'Komentar terlalu pendek.' });
+    }
+    if (safeContent.length > 1000) {
+      return res.status(400).json({ error: 'Komentar maksimal 1000 karakter.' });
+    }
+
+    const now = new Date().toISOString();
+    const comment = {
+      postId: req.params.id,
+      name: safeName,
+      content: safeContent,
+      status: 'pending',
+      createdAt: now,
+    };
+
+    const docRef = await db.collection('comments').add(comment);
+    res.status(201).json({ id: docRef.id, ...comment });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.get('/api/admin/posts', requireDb, requireAdmin, async (req, res) => {
   try {
     const snapshot = await db.collection('posts').orderBy('createdAt', 'desc').get();
@@ -157,7 +193,37 @@ app.get('/api/admin/posts', requireDb, requireAdmin, async (req, res) => {
   }
 });
 
-// Membuat konten baru (default berupa draf sampai dipublikasikan)
+app.get('/api/admin/comments', requireDb, requireAdmin, async (req, res) => {
+  try {
+    const snapshot = await db.collection('comments').orderBy('createdAt', 'desc').get();
+    res.status(200).json(snapshot.docs.map(normalizeComment));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.patch('/api/admin/comments/:id', requireDb, requireAdmin, async (req, res) => {
+  try {
+    const { status } = req.body || {};
+    const valid = ['approved', 'rejected', 'pending'];
+    if (!valid.includes(status)) {
+      return res.status(400).json({ error: 'Status komentar tidak valid.' });
+    }
+
+    const ref = db.collection('comments').doc(req.params.id);
+    const snapshot = await ref.get();
+    if (!snapshot.exists) {
+      return res.status(404).json({ error: 'Komentar tidak ditemukan.' });
+    }
+
+    await ref.update({ status });
+    const updated = await ref.get();
+    res.status(200).json(normalizeComment({ id: req.params.id, data: () => updated.data() }));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 app.post('/api/posts', requireDb, requireAdmin, async (req, res) => {
   try {
     const { title, content, author, category, published, image, thumbnail } = req.body || {};
@@ -194,7 +260,6 @@ app.post('/api/posts', requireDb, requireAdmin, async (req, res) => {
   }
 });
 
-// Memperbarui konten (judul, konten, penulis, status terbit)
 app.put('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
   try {
     const ref = db.collection('posts').doc(req.params.id);
@@ -240,7 +305,6 @@ app.put('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
   }
 });
 
-// Menghapus konten
 app.delete('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
   try {
     const ref = db.collection('posts').doc(req.params.id);
@@ -255,9 +319,6 @@ app.delete('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
   }
 });
 
-/* ================================================================
- * 5b. Auto-generate media untuk post (gambar + thumbnail)
- * ================================================================ */
 function hashString(value) {
   let hash = 0;
   for (let i = 0; i < value.length; i += 1) {
@@ -304,17 +365,10 @@ app.post('/api/posts/generate-media', requireAdmin, async (req, res) => {
   }
 });
 
-/* ================================================================
- * 5b. Auto-generate konten untuk editor
- *    - Bila AI_API_KEY di-set: memakai API AI kompatibel OpenAI
- *      (AI_BASE_URL + AI_MODEL, bisa provider/gateway apa pun).
- *    - Tanpa key atau saat AI gagal: memakai generator template lokal.
- * ================================================================ */
 const AI_API_KEY = process.env.AI_API_KEY || '';
 const AI_BASE_URL = (process.env.AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
 const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
 
-// Generator template (tanpa API key, selalu tersedia)
 function generateContentTemplate({ title, category, keywords }) {
   const kataKunci = String(keywords || '')
     .split(',')
@@ -340,10 +394,8 @@ function generateContentTemplate({ title, category, keywords }) {
   ].join('\n');
 }
 
-// Generator berbasis API AI (chat completions kompatibel OpenAI)
 async function generateContentWithAI({ title, category, keywords }) {
-  const systemPrompt =
-    'Anda adalah penulis artikel blog profesional berbahasa Indonesia. Tulis konten informatif yang terstruktur dengan heading Markdown (##), tanpa salam pembuka. Keluarkan hanya isi artikel.';
+  const systemPrompt = 'Anda adalah penulis artikel blog profesional berbahasa Indonesia. Tulis konten informatif yang terstruktur dengan heading Markdown (##), tanpa salam pembuka. Keluarkan hanya isi artikel.';
   const userPrompt = `Tulis artikel blog tentang "${title}".\nKategori: ${category || 'Umum'}.\nKata kunci (opsional): ${keywords || '-'}.\nPanjang 400-700 kata, gunakan heading Markdown, paragraf yang jelas, dan tambahkan satu tag <!-- pagebreak --> untuk membagi konten bila perlu.`;
 
   const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
@@ -366,7 +418,6 @@ async function generateContentWithAI({ title, category, keywords }) {
   return String(content).trim();
 }
 
-// POST /api/posts/generate (admin) -> { content, source, warning? }
 app.post('/api/posts/generate', requireAdmin, async (req, res) => {
   const { title, category, keywords } = req.body || {};
   if (!title || !String(title).trim()) {
@@ -383,7 +434,6 @@ app.post('/api/posts/generate', requireAdmin, async (req, res) => {
       const content = await generateContentWithAI(params);
       return res.status(200).json({ content, source: 'ai' });
     } catch (error) {
-      // Jatuh ke template agar editor tetap bisa bekerja saat AI gagal
       return res.status(200).json({
         content: generateContentTemplate(params),
         source: 'template',
@@ -394,15 +444,10 @@ app.post('/api/posts/generate', requireAdmin, async (req, res) => {
   res.status(200).json({ content: generateContentTemplate(params), source: 'template' });
 });
 
-/* ================================================================
- * 6. Pengaturan Situs (hero homepage)
- *    Disimpan di koleksi `settings`, dokumen `site`.
- * ================================================================ */
 const DEFAULT_SETTINGS = {
   hero: {
     title: 'Selamat Datang di CMS Kami',
-    subtitle:
-      'Baca semua konten yang sudah diterbitkan oleh tim admin. Konten diperbarui secara langsung dari Firestore.',
+    subtitle: 'Baca semua konten yang sudah diterbitkan oleh tim admin. Konten diperbarui secara langsung dari Firestore.',
     image: '',
   },
 };
@@ -422,7 +467,6 @@ function normalizeSettings(doc) {
   };
 }
 
-// GET /api/settings (publik) -> konfigurasi hero untuk homepage
 app.get('/api/settings', requireDb, async (req, res) => {
   try {
     const snapshot = await settingsRef().get();
@@ -433,7 +477,6 @@ app.get('/api/settings', requireDb, async (req, res) => {
   }
 });
 
-// PUT /api/settings (admin) -> perbarui hero (judul, teks pendukung, background)
 app.put('/api/settings', requireDb, requireAdmin, async (req, res) => {
   try {
     const hero = (req.body || {}).hero || {};
@@ -449,9 +492,7 @@ app.put('/api/settings', requireDb, requireAdmin, async (req, res) => {
       return res.status(400).json({ error: 'Teks pendukung hero maksimal 300 karakter.' });
     }
     if (image !== null && image && !/^https?:\/\/\S+$/i.test(image)) {
-      return res
-        .status(400)
-        .json({ error: 'URL background tidak valid (harus diawali http:// atau https://).' });
+      return res.status(400).json({ error: 'URL background tidak valid (harus diawali http:// atau https://).' });
     }
 
     const snapshot = await settingsRef().get();
@@ -471,25 +512,18 @@ app.put('/api/settings', requireDb, requireAdmin, async (req, res) => {
   }
 });
 
-/* ================================================================
- * 7. Halaman statis: homepage publik + dashboard admin
- * ================================================================ */
 app.use(express.static(PUBLIC_DIR));
 
-// Rute pendek untuk dashboard admin
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(PUBLIC_DIR, 'admin.html'));
 });
 
-// 404 JSON untuk semua endpoint /api yang tidak dikenal
 app.use('/api', (req, res) => {
   res.status(404).json({ error: 'Endpoint tidak ditemukan.' });
 });
 
-// Export untuk Vercel Serverless Function
 module.exports = app;
 
-// Jalankan server lokal jika tidak di Vercel
 if (process.env.NODE_ENV !== 'production') {
   const PORT = process.env.PORT || 3000;
   app.listen(PORT, '0.0.0.0', () => {
