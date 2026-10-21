@@ -8,6 +8,7 @@
  */
 process.env.NODE_ENV = 'production'; // cegah app.listen() otomatis
 process.env.ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'rahasia123';
+delete process.env.AI_API_KEY; // pastikan jalur template yang teruji (deterministik)
 // Kredensial demo: hanya untuk memicu inisialisasi; Firestore di-mock in-memory
 process.env.FIREBASE_PROJECT_ID = 'demo-project';
 process.env.FIREBASE_CLIENT_EMAIL = 'demo@example.com';
@@ -79,12 +80,41 @@ async function main() {
   assert.strictEqual(res.status, 400, 'post kosong harus 400');
   console.log('✓ validasi input post (400)');
 
+  // 4b. Generate konten otomatis (tanpa AI_API_KEY -> template)
+  res = await request('POST', '/api/posts/generate', { body: { title: 'X' } });
+  assert.strictEqual(res.status, 401, 'generate tanpa token harus 401');
+  res = await request('POST', '/api/posts/generate', { body: {}, token });
+  assert.strictEqual(res.status, 400, 'generate tanpa judul harus 400');
+  res = await request('POST', '/api/posts/generate', {
+    body: { title: 'Cara Belajar Node.js', category: 'Teknologi' },
+    token,
+  });
+  assert.strictEqual(res.status, 200, 'generate dengan token harus 200');
+  assert.ok(res.json.content && res.json.content.length > 100, 'konten hasil generate harus substansial');
+  assert.ok(res.json.content.includes('Node.js'), 'konten generate harus memuat judul');
+  assert.strictEqual(res.json.source, 'template', 'tanpa AI_API_KEY harus memakai template');
+  console.log('✓ generate konten otomatis (endpoint admin + template fallback)');
+
+  // 4c. Pengaturan hero
+  res = await request('GET', '/api/settings');
+  assert.strictEqual(res.status, 200, 'GET /api/settings publik harus 200');
+  assert.ok(res.json.hero && res.json.hero.title, 'settings harus punya hero.title');
+  res = await request('PUT', '/api/settings', { body: { hero: { title: 'Judul Baru Hero' } }, token });
+  assert.strictEqual(res.status, 200, 'PUT settings harus 200');
+  assert.strictEqual(res.json.hero.title, 'Judul Baru Hero');
+  res = await request('GET', '/api/settings');
+  assert.strictEqual(res.json.hero.title, 'Judul Baru Hero', 'perubahan hero harus tersimpan');
+  res = await request('PUT', '/api/settings', { body: { hero: { image: 'ftp://tidak-valid' } }, token });
+  assert.strictEqual(res.status, 400, 'URL gambar tidak valid harus 400');
+  console.log('✓ pengaturan hero (publik GET / admin PUT / validasi)');
+
   // 5. CRUD: buat draf -> tidak tampil di publik -> terbit -> tampil -> hapus
   res = await request('POST', '/api/posts', {
-    body: { title: 'Post Pertama', content: 'Isi konten pertama.', author: 'Buffy', published: false },
+    body: { title: 'Post Pertama', content: 'Isi konten pertama.', author: 'Buffy', category: 'Teknologi', published: false },
     token,
   });
   assert.strictEqual(res.status, 201, 'create post harus 201');
+  assert.strictEqual(res.json.category, 'Teknologi', 'kategori post harus tersimpan');
   const postId = res.json.id;
 
   res = await request('GET', '/api/posts');
@@ -99,6 +129,7 @@ async function main() {
   res = await request('GET', '/api/posts');
   assert.strictEqual(res.json.length, 1, 'post terbit harus tampil di homepage');
   assert.strictEqual(res.json[0].title, 'Post Pertama');
+  assert.strictEqual(res.json[0].category, 'Teknologi', 'kategori harus ikut di endpoint publik');
   console.log('✓ publish post -> tampil di homepage publik');
 
   res = await request('GET', '/api/admin/posts', { token });
@@ -112,6 +143,13 @@ async function main() {
   res = await request('DELETE', `/api/posts/${postId}`, { token });
   assert.strictEqual(res.status, 404, 'hapus dua kali harus 404');
   console.log('✓ DELETE post (dan 404 untuk id yang sudah hilang)');
+
+  // 5b. Kategori default 'Umum' bila tidak diisi
+  res = await request('POST', '/api/posts', { body: { title: 'Tanpa Kategori', content: 'Isi.' }, token });
+  assert.strictEqual(res.status, 201);
+  assert.strictEqual(res.json.category, 'Umum', 'kategori kosong harus default Umum');
+  await request('DELETE', `/api/posts/${res.json.id}`, { token });
+  console.log('✓ kategori default Umum');
 
   // 6. 404 API
   res = await request('GET', '/api/tidak-ada');

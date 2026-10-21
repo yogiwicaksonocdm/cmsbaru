@@ -90,7 +90,13 @@
 
     <!-- Daftar Konten Publik -->
     <main class="container mx-auto px-6 py-10 max-w-4xl">
-        <h2 class="text-2xl font-bold text-gray-800 mb-6">Konten Terbaru</h2>
+        <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
+            <h2 class="text-2xl font-bold text-gray-800">Konten Terbaru</h2>
+            <select id="categoryFilter" aria-label="Filter kategori"
+                class="hidden px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Semua kategori</option>
+            </select>
+        </div>
 
         <div id="statusBox" class="hidden mb-6 rounded-lg border px-4 py-3 text-sm"></div>
 
@@ -145,6 +151,54 @@
             statusBox.classList.remove('hidden');
         }
 
+        let allPosts = [];
+
+        // Isi dropdown filter kategori dari data yang ada
+        function updateCategoryFilter(posts) {
+            const filter = document.getElementById('categoryFilter');
+            const categories = [...new Set(posts.map(p => p.category || 'Umum'))].sort();
+            if (categories.length === 0) {
+                filter.classList.add('hidden');
+                return;
+            }
+            const current = filter.value;
+            filter.innerHTML =
+                '<option value="">Semua kategori</option>' +
+                categories.map(c => `<option value="${escapeHtml(c)}"${c === current ? ' selected' : ''}>${escapeHtml(c)}</option>`).join('');
+            filter.classList.remove('hidden');
+        }
+
+        function renderPosts(posts) {
+            if (posts.length === 0) {
+                postsList.innerHTML = `
+                    <div class="bg-white rounded-xl border border-dashed border-gray-300 p-10 text-center">
+                        <p class="text-gray-500">${allPosts.length === 0 ? 'Belum ada konten yang diterbitkan.' : 'Tidak ada konten pada kategori ini.'}</p>
+                        ${allPosts.length === 0 ? '<a href="/admin" class="inline-block mt-4 text-sm text-blue-600 font-semibold hover:underline">Tambahkan konten lewat dashboard admin &rarr;</a>' : ''}
+                    </div>`;
+                return;
+            }
+
+            postsList.innerHTML = posts.map(post => `
+                <article class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition">
+                    <h3 class="text-xl font-bold text-gray-800">${escapeHtml(post.title)}</h3>
+                    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+                        <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">${escapeHtml(post.category || 'Umum')}</span>
+                        <span class="inline-flex items-center gap-1">
+                            <span class="bg-gray-100 text-gray-600 rounded-full w-5 h-5 inline-flex items-center justify-center font-bold">${escapeHtml((post.author || 'A').charAt(0).toUpperCase())}</span>
+                            ${escapeHtml(post.author || 'Admin')}
+                        </span>
+                        <span>${escapeHtml(formatDate(post.createdAt))}</span>
+                    </div>
+                    <p class="mt-4 text-gray-600 whitespace-pre-line break-words">${escapeHtml(post.content)}</p>
+                </article>
+            `).join('');
+        }
+
+        document.getElementById('categoryFilter').addEventListener('change', (e) => {
+            const filter = e.target.value;
+            renderPosts(filter ? allPosts.filter(p => (p.category || 'Umum') === filter) : allPosts);
+        });
+
         async function fetchPosts() {
             try {
                 const response = await fetch('/api/posts', { headers: { Accept: 'application/json' } });
@@ -157,31 +211,11 @@
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const posts = await response.json();
+                allPosts = posts;
                 document.getElementById('postCount').textContent = posts.length;
                 document.getElementById('lastUpdated').textContent = new Date().toLocaleString('id-ID');
-
-                if (posts.length === 0) {
-                    postsList.innerHTML = `
-                        <div class="bg-white rounded-xl border border-dashed border-gray-300 p-10 text-center">
-                            <p class="text-gray-500">Belum ada konten yang diterbitkan.</p>
-                            <a href="/admin" class="inline-block mt-4 text-sm text-blue-600 font-semibold hover:underline">Tambahkan konten lewat dashboard admin &rarr;</a>
-                        </div>`;
-                    return;
-                }
-
-                postsList.innerHTML = posts.map(post => `
-                    <article class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition">
-                        <h3 class="text-xl font-bold text-gray-800">${escapeHtml(post.title)}</h3>
-                        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
-                            <span class="inline-flex items-center gap-1">
-                                <span class="bg-gray-100 text-gray-600 rounded-full w-5 h-5 inline-flex items-center justify-center font-bold">${escapeHtml((post.author || 'A').charAt(0).toUpperCase())}</span>
-                                ${escapeHtml(post.author || 'Admin')}
-                            </span>
-                            <span>${escapeHtml(formatDate(post.createdAt))}</span>
-                        </div>
-                        <p class="mt-4 text-gray-600 whitespace-pre-line break-words">${escapeHtml(post.content)}</p>
-                    </article>
-                `).join('');
+                updateCategoryFilter(posts);
+                renderPosts(posts);
             } catch (error) {
                 console.error('Gagal memuat post:', error);
                 postsList.innerHTML = '';

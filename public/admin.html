@@ -65,6 +65,16 @@
             <!-- Notifikasi -->
             <div id="alertBox" class="hidden mb-6 rounded-lg border px-4 py-3 text-sm"></div>
 
+            <!-- Tab: Postingan | Pengaturan -->
+            <div class="flex items-center gap-2 mb-8 border-b border-gray-200">
+                <button type="button" data-tab="posts"
+                    class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px text-blue-600 border-blue-600">Postingan</button>
+                <button type="button" data-tab="settings"
+                    class="tab-btn px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px text-gray-500 border-transparent hover:text-gray-800">Pengaturan</button>
+            </div>
+
+            <div id="tabStats">
+
             <!-- Statistik -->
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
@@ -80,6 +90,10 @@
                     <p id="statDraft" class="text-3xl font-bold text-amber-500 mt-1">0</p>
                 </div>
             </div>
+
+            </div>
+
+            <div id="tabSettings" class="hidden">
 
             <!-- Pengaturan Hero Homepage -->
             <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
@@ -128,7 +142,9 @@
                     </div>
                 </form>
             </section>
+            </div>
 
+            <div id="tabPosts">
             <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <!-- Form Konten -->
                 <section class="lg:col-span-2">
@@ -145,11 +161,26 @@
                                 <label for="content" class="block text-gray-700 text-sm font-bold mb-2">Konten</label>
                                 <textarea id="content" rows="6" required
                                     class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                                <div class="flex items-center justify-between gap-2 mt-2 flex-wrap">
+                                    <button type="button" id="generateBtn"
+                                        class="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition font-semibold">Generate Konten</button>
+                                    <div class="flex items-center gap-2">
+                                        <label for="keywords" class="text-xs text-gray-500">Kata kunci</label>
+                                        <input type="text" id="keywords" placeholder="opsional, pisahkan dengan koma"
+                                            class="text-sm px-2 py-1 border rounded-lg w-52 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                </div>
                             </div>
                             <div>
                                 <label for="author" class="block text-gray-700 text-sm font-bold mb-2">Penulis</label>
                                 <input type="text" id="author" placeholder="Admin"
                                     class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            </div>
+                            <div>
+                                <label for="category" class="block text-gray-700 text-sm font-bold mb-2">Kategori</label>
+                                <input type="text" id="category" list="categoryList" maxlength="40" placeholder="Umum"
+                                    class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <datalist id="categoryList"></datalist>
                             </div>
                             <label class="flex items-center gap-2 text-sm text-gray-700">
                                 <input type="checkbox" id="published" class="w-4 h-4 rounded border-gray-300 text-blue-600">
@@ -172,6 +203,7 @@
                         <p class="text-gray-500 text-sm">Memuat data...</p>
                     </div>
                 </section>
+            </div>
             </div>
         </main>
     </div>
@@ -312,7 +344,7 @@
         });
 
         // Peringatkan bila URL background tidak bisa dimuat browser.
-        // (Elemen <div> tidak memancarkan event error untuk background-image,
+        // (Elemen div tidak memancarkan event error untuk background-image,
         //  jadi gunakan objek Image terpisah untuk mengujinya.)
         let heroImageProbe = null;
         function probeHeroImage(url) {
@@ -391,6 +423,12 @@
                 document.getElementById('statPublished').textContent = posts.filter(p => p.published).length;
                 document.getElementById('statDraft').textContent = posts.filter(p => !p.published).length;
 
+                // Isi saran kategori dari postingan yang ada
+                const categories = [...new Set(posts.map(p => p.category || 'Umum'))].sort();
+                document.getElementById('categoryList').innerHTML = categories
+                    .map(c => `<option value="${escapeHtml(c)}">`)
+                    .join('');
+
                 if (posts.length === 0) {
                     postsList.innerHTML = '<p class="text-gray-500 text-sm bg-white border border-dashed border-gray-300 rounded-xl p-6 text-center">Belum ada postingan. Tambahkan lewat form di samping.</p>';
                     return;
@@ -405,6 +443,7 @@
                                     <span class="text-xs px-2 py-0.5 rounded-full font-semibold ${post.published ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}">
                                         ${post.published ? 'Terbit' : 'Draf'}
                                     </span>
+                                    <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-indigo-100 text-indigo-700">${escapeHtml(post.category || 'Umum')}</span>
                                 </div>
                                 <p class="text-sm text-gray-600 mt-2 whitespace-pre-line break-words line-clamp-4">${escapeHtml(post.content)}</p>
                                 <p class="text-xs text-gray-400 mt-3">${escapeHtml(post.author)} &middot; ${escapeHtml(formatDate(post.createdAt))}</p>
@@ -477,6 +516,7 @@
                 title: document.getElementById('title').value,
                 content: document.getElementById('content').value,
                 author: document.getElementById('author').value,
+                category: document.getElementById('category').value,
                 published: document.getElementById('published').checked,
             };
 
@@ -503,6 +543,7 @@
             document.getElementById('title').value = post.title;
             document.getElementById('content').value = post.content;
             document.getElementById('author').value = post.author;
+            document.getElementById('category').value = post.category || 'Umum';
             document.getElementById('published').checked = post.published;
             document.getElementById('formTitle').textContent = 'Edit Postingan';
             document.getElementById('saveBtn').textContent = 'Perbarui Postingan';
@@ -519,6 +560,63 @@
         }
 
         document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+
+        /* ---------- Tab Postingan | Pengaturan ---------- */
+        const tabSections = {
+            posts: [document.getElementById('tabStats'), document.getElementById('tabPosts')],
+            settings: [document.getElementById('tabSettings')],
+        };
+        document.querySelectorAll('.tab-btn').forEach((btn) => {
+            btn.addEventListener('click', () => {
+                const active = btn.dataset.tab;
+                document.querySelectorAll('.tab-btn').forEach((b) => {
+                    const isActive = b.dataset.tab === active;
+                    b.classList.toggle('text-blue-600', isActive);
+                    b.classList.toggle('border-blue-600', isActive);
+                    b.classList.toggle('text-gray-500', !isActive);
+                    b.classList.toggle('border-transparent', !isActive);
+                });
+                Object.entries(tabSections).forEach(([name, sections]) => {
+                    sections.forEach((section) => section && section.classList.toggle('hidden', name !== active));
+                });
+                if (active === 'settings') loadSettings(); // muat ulang pengaturan saat tab dibuka
+            });
+        });
+
+        /* ---------- Generate konten otomatis untuk editor ---------- */
+        document.getElementById('generateBtn').addEventListener('click', async () => {
+            const title = document.getElementById('title').value.trim();
+            if (!title) {
+                showAlert('error', 'Isi judul terlebih dahulu sebelum generate konten.');
+                document.getElementById('title').focus();
+                return;
+            }
+            const btn = document.getElementById('generateBtn');
+            btn.disabled = true;
+            btn.textContent = 'Membuat konten...';
+            try {
+                const response = await apiFetch('/api/posts/generate', {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        title,
+                        category: document.getElementById('category').value,
+                        keywords: document.getElementById('keywords').value,
+                    }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Gagal generate konten.');
+                document.getElementById('content').value = data.content;
+                if (data.warning) showAlert('info', data.warning);
+                else if (data.source === 'ai') showAlert('success', 'Konten digenerate oleh AI. Silakan edit seperlunya sebelum disimpan.');
+                else showAlert('info', 'Konten dibuat dari template otomatis. Atur AI_API_KEY di server untuk hasil AI.');
+            } catch (error) {
+                if (error.message !== 'unauthorized') showAlert('error', error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate Konten';
+            }
+        });
 
         /* ---------- Cek sesi saat halaman dibuka ---------- */
         (async function init() {

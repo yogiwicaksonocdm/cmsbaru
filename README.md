@@ -7,13 +7,14 @@ CMS sederhana dengan **homepage publik** (hanya menampilkan konten yang sudah di
 | URL       | Akses | Keterangan                                        |
 | --------- | ----- | ------------------------------------------------- |
 | `/`       | Publik | Homepage: hero (background + caption) dan daftar postingan yang sudah diterbitkan |
-| `/admin`  | Admin  | Dashboard: tambah, edit, terbitkan, hapus konten, dan atur hero homepage |
+| `/admin`  | Admin  | Dashboard dengan dua tab: **Postingan** (tulis/edit dengan kategori & generate konten otomatis) dan **Pengaturan** (hero homepage) |
 
 ## API
 
 | Method | Endpoint               | Akses  | Keterangan                              |
 | ------ | ---------------------- | ------ | --------------------------------------- |
-| GET    | `/api/posts`           | Publik | Daftar postingan terbit                 |
+| GET    | `/api/posts`           | Publik | Daftar postingan terbit (beserta kategori) |
+| POST   | `/api/posts/generate`  | Admin  | Auto-generate konten dari judul (AI bila `AI_API_KEY` di-set, selain itu template) |
 | POST   | `/api/auth/login`      | –      | `{ password }` -> `{ token, expiresAt }` |
 | GET    | `/api/auth/me`         | Admin  | Validasi sesi token                     |
 | GET    | `/api/admin/posts`     | Admin  | Semua postingan (termasuk draf)         |
@@ -24,6 +25,8 @@ CMS sederhana dengan **homepage publik** (hanya menampilkan konten yang sudah di
 | PUT    | `/api/settings`        | Admin  | Ubah hero: caption, teks pendukung, background |
 
 Semua endpoint admin memerlukan header `Authorization: Bearer <token>` hasil login.
+
+Setiap postingan memiliki `category` (opsional, default `Umum`) yang tampil sebagai chip di homepage lengkap dengan dropdown filter kategori. Tombol **Generate Konten** di editor memanggil `/api/posts/generate`: hasil AI bila `AI_API_KEY` di-set, dan generator template lokal bila tidak ada key atau AI sedang gagal.
 
 ## Setup lokal
 
@@ -46,6 +49,9 @@ Tanpa kredensial Firebase, jalankan `npm run preview` untuk mencoba CMS dengan F
 | `FIREBASE_PROJECT_ID`     | Ya*   | ID project Firebase                                     |
 | `FIREBASE_CLIENT_EMAIL`   | Ya*   | Email service account Firestore                         |
 | `FIREBASE_PRIVATE_KEY`    | Ya*   | Private key service account (pakai `\n` untuk newline)  |
+| `AI_API_KEY`              | Tidak | API key AI untuk generate konten (kompatibel OpenAI)    |
+| `AI_BASE_URL`             | Tidak | Endpoint API AI (default `https://api.openai.com/v1`; bisa provider/gateway apa pun yang kompatibel OpenAI) |
+| `AI_MODEL`                | Tidak | Nama model AI (default `gpt-4o-mini`)                   |
 | `PORT`                    | Tidak | Port server lokal (default 3000)                        |
 
 \* Wajib agar konten tersimpan di Firestore; tanpa ini, API mengembalikan `503` dan halaman menampilkan pesan konfigurasi.

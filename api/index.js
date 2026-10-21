@@ -122,6 +122,7 @@ function normalizePost(doc) {
     title: data.title || '',
     content: data.content || '',
     author: data.author || 'Admin',
+    category: String(data.category || 'Umum').trim() || 'Umum',
     // Post lama (tanpa field published) tetap dianggap terbit
     published: data.published !== false,
     createdAt: data.createdAt || null,
@@ -157,7 +158,7 @@ app.get('/api/admin/posts', requireDb, requireAdmin, async (req, res) => {
 // Membuat konten baru (default berupa draf sampai dipublikasikan)
 app.post('/api/posts', requireDb, requireAdmin, async (req, res) => {
   try {
-    const { title, content, author, published } = req.body || {};
+    const { title, content, author, category, published } = req.body || {};
     if (!title || !String(title).trim()) {
       return res.status(400).json({ error: 'Judul wajib diisi.' });
     }
@@ -169,6 +170,7 @@ app.post('/api/posts', requireDb, requireAdmin, async (req, res) => {
       title: String(title).trim(),
       content: String(content).trim(),
       author: (author && String(author).trim()) || 'Admin',
+      category: (category && String(category).trim().slice(0, 40)) || 'Umum',
       published: published === true,
       createdAt: now,
       updatedAt: now,
@@ -201,6 +203,7 @@ app.put('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
       patch.content = String(content).trim();
     }
     if (author !== undefined) patch.author = String(author).trim() || 'Admin';
+    if (category !== undefined) patch.category = String(category).trim().slice(0, 40) || 'Umum';
     if (published !== undefined) patch.published = published === true;
 
     await ref.update(patch);
@@ -224,6 +227,96 @@ app.delete('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
+});
+
+/* ================================================================
+ * 5b. Auto-generate konten untuk editor
+ *    - Bila AI_API_KEY di-set: memakai API AI kompatibel OpenAI
+ *      (AI_BASE_URL + AI_MODEL, bisa provider/gateway apa pun).
+ *    - Tanpa key atau saat AI gagal: memakai generator template lokal.
+ * ================================================================ */
+const AI_API_KEY = process.env.AI_API_KEY || '';
+const AI_BASE_URL = (process.env.AI_BASE_URL || 'https://api.openai.com/v1').replace(/\/+$/, '');
+const AI_MODEL = process.env.AI_MODEL || 'gpt-4o-mini';
+
+// Generator template (tanpa API key, selalu tersedia)
+function generateContentTemplate({ title, category, keywords }) {
+  const kataKunci = String(keywords || '')
+    .split(',')
+    .map((k) => k.trim())
+    .filter(Boolean);
+  const topik = kataKunci.length ? kataKunci.join(', ') : title;
+  const bidang = category || 'Umum';
+
+  return [
+    `## Latar Belakang`,
+    `Topik "${title}" semakin relevan dalam konteks ${bidang.toLowerCase()}. Bagian ini mengulas mengapa topik tersebut penting dan apa yang akan Anda dapatkan setelah membaca artikel ini sampai selesai.`,
+    '',
+    '## Poin Utama',
+    `1. ${topik} — penjelasan mendalam beserta contoh penerapannya.`,
+    `2. Manfaat dan tantangan saat mengimplementasikan ${title.toLowerCase()}.`,
+    '3. Langkah praktis yang bisa langsung diterapkan pembaca.',
+    '',
+    '## Tips Praktis',
+    `Mulailah dari hal paling sederhana: tentukan tujuan yang jelas saat membahas ${title.toLowerCase()}, siapkan data pendukung, lalu sajikan informasi secara bertahap agar mudah dipahami pembaca dari berbagai latar belakang.`,
+    '',
+    '## Penutup',
+    `Demikian ulasan mengenai ${title}. Semoga informasi ini bermanfaat dan bisa langsung Anda praktikkan.`,
+  ].join('\n');
+}
+
+// Generator berbasis API AI (chat completions kompatibel OpenAI)
+async function generateContentWithAI({ title, category, keywords }) {
+  const systemPrompt =
+    'Anda adalah penulis artikel blog profesional berbahasa Indonesia. Tulis konten informatif yang terstruktur dengan heading Markdown (##), tanpa salam pembuka. Keluarkan hanya isi artikel.';
+  const userPrompt = `Tulis artikel blog tentang "${title}".\nKategori: ${category || 'Umum'}.\nKata kunci (opsional): ${keywords || '-'}.\nPanjang 400-700 kata, gunakan heading Markdown, paragraf pendek, dan penutup yang ringkas.`;
+
+  const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${AI_API_KEY}` },
+    body: JSON.stringify({
+      model: AI_MODEL,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+      temperature: 0.7,
+    }),
+    signal: AbortSignal.timeout(45000),
+  });
+  if (!response.ok) throw new Error(`API AI merespons dengan status ${response.status}`);
+  const data = await response.json();
+  const content = data && data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content;
+  if (!content || !String(content).trim()) throw new Error('API AI tidak mengembalikan konten');
+  return String(content).trim();
+}
+
+// POST /api/posts/generate (admin) -> { content, source, warning? }
+app.post('/api/posts/generate', requireAdmin, async (req, res) => {
+  const { title, category, keywords } = req.body || {};
+  if (!title || !String(title).trim()) {
+    return res.status(400).json({ error: 'Isi judul terlebih dahulu sebelum generate konten.' });
+  }
+  const params = {
+    title: String(title).trim(),
+    category: String(category || '').trim(),
+    keywords: String(keywords || '').trim(),
+  };
+
+  if (AI_API_KEY) {
+    try {
+      const content = await generateContentWithAI(params);
+      return res.status(200).json({ content, source: 'ai' });
+    } catch (error) {
+      // Jatuh ke template agar editor tetap bisa bekerja saat AI gagal
+      return res.status(200).json({
+        content: generateContentTemplate(params),
+        source: 'template',
+        warning: `AI gagal (${error.message}); memakai template otomatis.`,
+      });
+    }
+  }
+  res.status(200).json({ content: generateContentTemplate(params), source: 'template' });
 });
 
 /* ================================================================
