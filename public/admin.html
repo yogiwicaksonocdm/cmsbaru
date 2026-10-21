@@ -162,13 +162,36 @@
                                 <textarea id="content" rows="6" required
                                     class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
                                 <div class="flex items-center justify-between gap-2 mt-2 flex-wrap">
-                                    <button type="button" id="generateBtn"
-                                        class="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition font-semibold">Generate Konten</button>
+                                    <div class="flex items-center gap-2 flex-wrap">
+                                        <button type="button" id="generateBtn"
+                                            class="text-sm bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition font-semibold">Generate Konten</button>
+                                        <button type="button" id="insertPageBreakBtn"
+                                            class="text-sm bg-slate-600 text-white px-3 py-1.5 rounded-lg hover:bg-slate-700 transition font-semibold">Page Break</button>
+                                    </div>
                                     <div class="flex items-center gap-2">
                                         <label for="keywords" class="text-xs text-gray-500">Kata kunci</label>
                                         <input type="text" id="keywords" placeholder="opsional, pisahkan dengan koma"
                                             class="text-sm px-2 py-1 border rounded-lg w-52 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                     </div>
+                                </div>
+                            </div>
+                            <div class="space-y-3">
+                                <div>
+                                    <label for="image" class="block text-gray-700 text-sm font-bold mb-2">Gambar Utama</label>
+                                    <input type="url" id="image" placeholder="https://contoh.com/gambar.jpg"
+                                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div>
+                                    <label for="thumbnail" class="block text-gray-700 text-sm font-bold mb-2">Thumbnail</label>
+                                    <input type="url" id="thumbnail" placeholder="https://contoh.com/thumbnail.jpg"
+                                        class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <button type="button" id="generateMediaBtn"
+                                        class="text-sm bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition font-semibold">Generate Picture & Thumbnail</button>
+                                </div>
+                                <div id="mediaPreviewWrapper" class="hidden overflow-hidden rounded-lg border border-gray-200 bg-gray-50">
+                                    <img id="mediaPreview" alt="Preview media" class="w-full h-40 object-cover">
                                 </div>
                             </div>
                             <div>
@@ -268,6 +291,28 @@
             alertBox.textContent = message;
             alertBox.classList.remove('hidden');
             if (type === 'success') setTimeout(() => alertBox.classList.add('hidden'), 3500);
+        }
+
+        function insertAtCursor(textarea, text) {
+            const start = textarea.selectionStart;
+            const end = textarea.selectionEnd;
+            textarea.setRangeText(text, start, end, 'end');
+            textarea.focus();
+        }
+
+        function updateMediaPreview() {
+            const image = document.getElementById('image').value.trim();
+            const thumbnail = document.getElementById('thumbnail').value.trim();
+            const preview = document.getElementById('mediaPreview');
+            const wrapper = document.getElementById('mediaPreviewWrapper');
+            const src = image || thumbnail;
+            if (!src) {
+                wrapper.classList.add('hidden');
+                preview.removeAttribute('src');
+                return;
+            }
+            preview.src = src;
+            wrapper.classList.remove('hidden');
         }
 
         // Tangani 401 (token kedaluwarsa / tidak valid) dari semua request admin
@@ -436,6 +481,7 @@
 
                 postsList.innerHTML = posts.map(post => `
                     <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-5" data-id="${escapeHtml(post.id)}">
+                        ${post.thumbnail ? `<img src="${escapeHtml(post.thumbnail)}" alt="${escapeHtml(post.title)}" class="w-full h-36 object-cover rounded-lg mb-4 border border-gray-200">` : ''}
                         <div class="flex items-start justify-between gap-3">
                             <div class="min-w-0">
                                 <div class="flex items-center gap-2 flex-wrap">
@@ -445,7 +491,7 @@
                                     </span>
                                     <span class="text-xs px-2 py-0.5 rounded-full font-semibold bg-indigo-100 text-indigo-700">${escapeHtml(post.category || 'Umum')}</span>
                                 </div>
-                                <p class="text-sm text-gray-600 mt-2 whitespace-pre-line break-words line-clamp-4">${escapeHtml(post.content)}</p>
+                                <p class="text-sm text-gray-600 mt-2 whitespace-pre-line break-words line-clamp-4">${escapeHtml(post.content).replace(/&lt;!-- pagebreak --&gt;/g, '[Page Break]')}</p>
                                 <p class="text-xs text-gray-400 mt-3">${escapeHtml(post.author)} &middot; ${escapeHtml(formatDate(post.createdAt))}</p>
                             </div>
                         </div>
@@ -517,6 +563,8 @@
                 content: document.getElementById('content').value,
                 author: document.getElementById('author').value,
                 category: document.getElementById('category').value,
+                image: document.getElementById('image').value,
+                thumbnail: document.getElementById('thumbnail').value,
                 published: document.getElementById('published').checked,
             };
 
@@ -544,22 +592,32 @@
             document.getElementById('content').value = post.content;
             document.getElementById('author').value = post.author;
             document.getElementById('category').value = post.category || 'Umum';
+            document.getElementById('image').value = post.image || '';
+            document.getElementById('thumbnail').value = post.thumbnail || '';
             document.getElementById('published').checked = post.published;
             document.getElementById('formTitle').textContent = 'Edit Postingan';
             document.getElementById('saveBtn').textContent = 'Perbarui Postingan';
             document.getElementById('cancelEditBtn').classList.remove('hidden');
+            updateMediaPreview();
             document.getElementById('formTitle').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
         function resetForm() {
             editingId = null;
             postForm.reset();
+            updateMediaPreview();
             document.getElementById('formTitle').textContent = 'Tambah Postingan Baru';
             document.getElementById('saveBtn').textContent = 'Simpan Postingan';
             document.getElementById('cancelEditBtn').classList.add('hidden');
         }
 
         document.getElementById('cancelEditBtn').addEventListener('click', resetForm);
+        document.getElementById('insertPageBreakBtn').addEventListener('click', () => {
+            const editor = document.getElementById('content');
+            insertAtCursor(editor, '\n\n<!-- pagebreak -->\n\n');
+        });
+        document.getElementById('image').addEventListener('input', updateMediaPreview);
+        document.getElementById('thumbnail').addEventListener('input', updateMediaPreview);
 
         /* ---------- Tab Postingan | Pengaturan ---------- */
         const tabSections = {
@@ -615,6 +673,40 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Generate Konten';
+            }
+        });
+
+        document.getElementById('generateMediaBtn').addEventListener('click', async () => {
+            const title = document.getElementById('title').value.trim();
+            if (!title) {
+                showAlert('error', 'Isi judul terlebih dahulu sebelum generate gambar.');
+                document.getElementById('title').focus();
+                return;
+            }
+            const btn = document.getElementById('generateMediaBtn');
+            btn.disabled = true;
+            btn.textContent = 'Membuat gambar...';
+            try {
+                const response = await apiFetch('/api/posts/generate-media', {
+                    method: 'POST',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        title,
+                        category: document.getElementById('category').value,
+                        keywords: document.getElementById('keywords').value,
+                    }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Gagal generate media.');
+                document.getElementById('image').value = data.picture;
+                document.getElementById('thumbnail').value = data.thumbnail;
+                updateMediaPreview();
+                showAlert('success', 'Picture dan thumbnail otomatis dibuat.');
+            } catch (error) {
+                if (error.message !== 'unauthorized') showAlert('error', error.message);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Generate Picture & Thumbnail';
             }
         });
 

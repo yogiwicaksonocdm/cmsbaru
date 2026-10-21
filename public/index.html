@@ -45,6 +45,28 @@
         }
         .hero-glow { animation: heroGlow 12s ease-in-out infinite; }
 
+        .page-break {
+            position: relative;
+            margin: 2rem 0;
+            border: 0;
+            height: 1px;
+            background: linear-gradient(to right, transparent, #cbd5e1, transparent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .page-break::before {
+            content: "Page Break";
+            position: absolute;
+            background: white;
+            color: #64748b;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            padding: 0 0.75rem;
+        }
+
         /* Hormati preferensi pengguna mengurangi animasi */
         @media (prefers-reduced-motion: reduce) {
             .hero-word { animation: none; opacity: 1; transform: none; }
@@ -151,6 +173,15 @@
             statusBox.classList.remove('hidden');
         }
 
+        function renderPostContent(content) {
+            const contentMarkup = String(content ?? '')
+                .replace(/<!--\s*pagebreak\s*-->/gi, '__PAGEBREAK__')
+                .replace(/\r\n/g, '\n');
+            return escapeHtml(contentMarkup)
+                .replace(/__PAGEBREAK__/g, '<div class="page-break" aria-label="Page Break"></div>')
+                .replace(/\n/g, '<br>');
+        }
+
         let allPosts = [];
 
         // Isi dropdown filter kategori dari data yang ada
@@ -179,17 +210,20 @@
             }
 
             postsList.innerHTML = posts.map(post => `
-                <article class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition">
-                    <h3 class="text-xl font-bold text-gray-800">${escapeHtml(post.title)}</h3>
-                    <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
-                        <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">${escapeHtml(post.category || 'Umum')}</span>
-                        <span class="inline-flex items-center gap-1">
-                            <span class="bg-gray-100 text-gray-600 rounded-full w-5 h-5 inline-flex items-center justify-center font-bold">${escapeHtml((post.author || 'A').charAt(0).toUpperCase())}</span>
-                            ${escapeHtml(post.author || 'Admin')}
-                        </span>
-                        <span>${escapeHtml(formatDate(post.createdAt))}</span>
+                <article class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
+                    ${post.image || post.thumbnail ? `<img src="${escapeHtml(post.image || post.thumbnail)}" alt="${escapeHtml(post.title)}" class="w-full h-56 object-cover border-b border-gray-200">` : ''}
+                    <div class="p-6">
+                        <h3 class="text-xl font-bold text-gray-800">${escapeHtml(post.title)}</h3>
+                        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+                            <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">${escapeHtml(post.category || 'Umum')}</span>
+                            <span class="inline-flex items-center gap-1">
+                                <span class="bg-gray-100 text-gray-600 rounded-full w-5 h-5 inline-flex items-center justify-center font-bold">${escapeHtml((post.author || 'A').charAt(0).toUpperCase())}</span>
+                                ${escapeHtml(post.author || 'Admin')}
+                            </span>
+                            <span>${escapeHtml(formatDate(post.createdAt))}</span>
+                        </div>
+                        <div class="mt-4 text-gray-600 whitespace-pre-line break-words article-content">${renderPostContent(post.content)}</div>
                     </div>
-                    <p class="mt-4 text-gray-600 whitespace-pre-line break-words">${escapeHtml(post.content)}</p>
                 </article>
             `).join('');
         }

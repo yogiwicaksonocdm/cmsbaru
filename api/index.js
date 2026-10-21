@@ -123,6 +123,8 @@ function normalizePost(doc) {
     content: data.content || '',
     author: data.author || 'Admin',
     category: String(data.category || 'Umum').trim() || 'Umum',
+    image: String(data.image || '').trim(),
+    thumbnail: String(data.thumbnail || '').trim(),
     // Post lama (tanpa field published) tetap dianggap terbit
     published: data.published !== false,
     createdAt: data.createdAt || null,
@@ -158,12 +160,20 @@ app.get('/api/admin/posts', requireDb, requireAdmin, async (req, res) => {
 // Membuat konten baru (default berupa draf sampai dipublikasikan)
 app.post('/api/posts', requireDb, requireAdmin, async (req, res) => {
   try {
-    const { title, content, author, category, published } = req.body || {};
+    const { title, content, author, category, published, image, thumbnail } = req.body || {};
     if (!title || !String(title).trim()) {
       return res.status(400).json({ error: 'Judul wajib diisi.' });
     }
     if (!content || !String(content).trim()) {
       return res.status(400).json({ error: 'Konten wajib diisi.' });
+    }
+    const imageUrl = typeof image === 'string' ? image.trim() : '';
+    const thumbnailUrl = typeof thumbnail === 'string' ? thumbnail.trim() : '';
+    if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) {
+      return res.status(400).json({ error: 'URL gambar utama tidak valid.' });
+    }
+    if (thumbnailUrl && !/^https?:\/\/\S+$/i.test(thumbnailUrl)) {
+      return res.status(400).json({ error: 'URL thumbnail tidak valid.' });
     }
     const now = new Date().toISOString();
     const newPost = {
@@ -171,6 +181,8 @@ app.post('/api/posts', requireDb, requireAdmin, async (req, res) => {
       content: String(content).trim(),
       author: (author && String(author).trim()) || 'Admin',
       category: (category && String(category).trim().slice(0, 40)) || 'Umum',
+      image: imageUrl,
+      thumbnail: thumbnailUrl,
       published: published === true,
       createdAt: now,
       updatedAt: now,
@@ -191,7 +203,7 @@ app.put('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
       return res.status(404).json({ error: 'Postingan tidak ditemukan.' });
     }
 
-    const { title, content, author, published } = req.body || {};
+    const { title, content, author, category, published, image, thumbnail } = req.body || {};
     const patch = { updatedAt: new Date().toISOString() };
 
     if (title !== undefined) {
@@ -204,6 +216,20 @@ app.put('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
     }
     if (author !== undefined) patch.author = String(author).trim() || 'Admin';
     if (category !== undefined) patch.category = String(category).trim().slice(0, 40) || 'Umum';
+    if (image !== undefined) {
+      const imageUrl = String(image || '').trim();
+      if (imageUrl && !/^https?:\/\/\S+$/i.test(imageUrl)) {
+        return res.status(400).json({ error: 'URL gambar utama tidak valid.' });
+      }
+      patch.image = imageUrl;
+    }
+    if (thumbnail !== undefined) {
+      const thumbUrl = String(thumbnail || '').trim();
+      if (thumbUrl && !/^https?:\/\/\S+$/i.test(thumbUrl)) {
+        return res.status(400).json({ error: 'URL thumbnail tidak valid.' });
+      }
+      patch.thumbnail = thumbUrl;
+    }
     if (published !== undefined) patch.published = published === true;
 
     await ref.update(patch);
@@ -230,6 +256,55 @@ app.delete('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
 });
 
 /* ================================================================
+ * 5b. Auto-generate media untuk post (gambar + thumbnail)
+ * ================================================================ */
+function hashString(value) {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return Math.abs(hash);
+}
+
+function generatePostMedia({ title, category, keywords }) {
+  const seed = hashString(`${title || 'post'}|${category || 'Umum'}|${keywords || ''}`);
+  const photoIds = [
+    'photo-1493246507139-91e8fad9978e',
+    'photo-1500530855697-b586d89ba3ee',
+    'photo-1516321318423-f06f85e504b3',
+    'photo-1522202176988-66273c2fd55f',
+    'photo-1524758631624-e2822e304c36',
+    'photo-1518770660439-4636190af475',
+    'photo-1504384308090-c894fdcc538d',
+    'photo-1487412720507-e7ab37603c6f',
+  ];
+  const photoId = photoIds[seed % photoIds.length];
+  const base = `https://images.unsplash.com/${photoId}?auto=format&fit=crop`;
+  return {
+    picture: `${base}&w=1200&q=80`,
+    thumbnail: `${base}&w=600&h=360&q=80`,
+  };
+}
+
+app.post('/api/posts/generate-media', requireAdmin, async (req, res) => {
+  try {
+    const { title, category, keywords } = req.body || {};
+    if (!title || !String(title).trim()) {
+      return res.status(400).json({ error: 'Isi judul terlebih dahulu sebelum generate gambar.' });
+    }
+    const media = generatePostMedia({
+      title: String(title).trim(),
+      category: String(category || '').trim(),
+      keywords: String(keywords || '').trim(),
+    });
+    res.status(200).json(media);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* ================================================================
  * 5b. Auto-generate konten untuk editor
  *    - Bila AI_API_KEY di-set: memakai API AI kompatibel OpenAI
  *      (AI_BASE_URL + AI_MODEL, bisa provider/gateway apa pun).
@@ -250,7 +325,7 @@ function generateContentTemplate({ title, category, keywords }) {
 
   return [
     `## Latar Belakang`,
-    `Topik "${title}" semakin relevan dalam konteks ${bidang.toLowerCase()}. Bagian ini mengulas mengapa topik tersebut penting dan apa yang akan Anda dapatkan setelah membaca artikel ini sampai selesai.`,
+    `Topik "${title}" semakin relevan dalam konteks ${bidang.toLowerCase()}. Bagian ini mengulas mengapa topik tersebut penting dan apa yang akan Anda dapatkan setelah membaca artikel ini sampai tuntas.`,
     '',
     '## Poin Utama',
     `1. ${topik} — penjelasan mendalam beserta contoh penerapannya.`,
@@ -258,7 +333,7 @@ function generateContentTemplate({ title, category, keywords }) {
     '3. Langkah praktis yang bisa langsung diterapkan pembaca.',
     '',
     '## Tips Praktis',
-    `Mulailah dari hal paling sederhana: tentukan tujuan yang jelas saat membahas ${title.toLowerCase()}, siapkan data pendukung, lalu sajikan informasi secara bertahap agar mudah dipahami pembaca dari berbagai latar belakang.`,
+    `Mulailah dari hal paling sederhana: tentukan tujuan yang jelas saat membahas ${title.toLowerCase()}, siapkan data pendukung, lalu sajikan informasi secara bertahap agar mudah dipahami pembaca.`,
     '',
     '## Penutup',
     `Demikian ulasan mengenai ${title}. Semoga informasi ini bermanfaat dan bisa langsung Anda praktikkan.`,
@@ -269,7 +344,7 @@ function generateContentTemplate({ title, category, keywords }) {
 async function generateContentWithAI({ title, category, keywords }) {
   const systemPrompt =
     'Anda adalah penulis artikel blog profesional berbahasa Indonesia. Tulis konten informatif yang terstruktur dengan heading Markdown (##), tanpa salam pembuka. Keluarkan hanya isi artikel.';
-  const userPrompt = `Tulis artikel blog tentang "${title}".\nKategori: ${category || 'Umum'}.\nKata kunci (opsional): ${keywords || '-'}.\nPanjang 400-700 kata, gunakan heading Markdown, paragraf pendek, dan penutup yang ringkas.`;
+  const userPrompt = `Tulis artikel blog tentang "${title}".\nKategori: ${category || 'Umum'}.\nKata kunci (opsional): ${keywords || '-'}.\nPanjang 400-700 kata, gunakan heading Markdown, paragraf yang jelas, dan tambahkan satu tag <!-- pagebreak --> untuk membagi konten bila perlu.`;
 
   const response = await fetch(`${AI_BASE_URL}/chat/completions`, {
     method: 'POST',
