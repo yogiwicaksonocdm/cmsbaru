@@ -67,6 +67,28 @@
             padding: 0 0.75rem;
         }
 
+        .read-more-toggle {
+            margin-top: 1rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: #eff6ff;
+            color: #1d4ed8;
+            border: 1px solid #bfdbfe;
+            border-radius: 9999px;
+            padding: 0.5rem 0.9rem;
+            font-size: 0.8rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .read-more-toggle:hover {
+            background: #dbeafe;
+        }
+        .read-more-content.hidden {
+            display: none;
+        }
+
         /* Hormati preferensi pengguna mengurangi animasi */
         @media (prefers-reduced-motion: reduce) {
             .hero-word { animation: none; opacity: 1; transform: none; }
@@ -173,13 +195,22 @@
             statusBox.classList.remove('hidden');
         }
 
-        function renderPostContent(content) {
-            const contentMarkup = String(content ?? '')
-                .replace(/<!--\s*pagebreak\s*-->/gi, '__PAGEBREAK__')
-                .replace(/\r\n/g, '\n');
-            return escapeHtml(contentMarkup)
-                .replace(/__PAGEBREAK__/g, '<div class="page-break" aria-label="Page Break"></div>')
-                .replace(/\n/g, '<br>');
+        function renderContentBlock(text) {
+            const normalized = String(text ?? '')
+                .replace(/\r\n/g, '\n')
+                .trim();
+
+            if (!normalized) return '';
+            return escapeHtml(normalized).replace(/\n/g, '<br>');
+        }
+
+        function splitByPageBreak(content) {
+            const raw = String(content ?? '');
+            const parts = raw.split(/<!--\s*pagebreak\s*-->/gi);
+            return {
+                intro: parts[0] || '',
+                rest: parts.slice(1).join('\n\n<!-- pagebreak -->\n\n'),
+            };
         }
 
         let allPosts = [];
@@ -209,24 +240,47 @@
                 return;
             }
 
-            postsList.innerHTML = posts.map(post => `
-                <article class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition">
-                    ${post.image || post.thumbnail ? `<img src="${escapeHtml(post.image || post.thumbnail)}" alt="${escapeHtml(post.title)}" class="w-full h-56 object-cover border-b border-gray-200">` : ''}
-                    <div class="p-6">
-                        <h3 class="text-xl font-bold text-gray-800">${escapeHtml(post.title)}</h3>
-                        <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
-                            <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">${escapeHtml(post.category || 'Umum')}</span>
-                            <span class="inline-flex items-center gap-1">
-                                <span class="bg-gray-100 text-gray-600 rounded-full w-5 h-5 inline-flex items-center justify-center font-bold">${escapeHtml((post.author || 'A').charAt(0).toUpperCase())}</span>
-                                ${escapeHtml(post.author || 'Admin')}
-                            </span>
-                            <span>${escapeHtml(formatDate(post.createdAt))}</span>
+            postsList.innerHTML = posts.map(post => {
+                const { intro, rest } = splitByPageBreak(post.content);
+                const introHtml = renderContentBlock(intro);
+                const remainderHtml = rest ? `<div class="read-more-content hidden">${renderContentBlock(rest)}</div>` : '';
+                const toggleBtn = rest
+                    ? '<button type="button" class="read-more-toggle" data-target="read-more-' + escapeHtml(post.id) + '">Lanjutkan membaca</button>'
+                    : '';
+
+                return `
+                    <article class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition" data-post-id="${escapeHtml(post.id)}">
+                        ${post.image || post.thumbnail ? `<img src="${escapeHtml(post.image || post.thumbnail)}" alt="${escapeHtml(post.title)}" class="w-full h-56 object-cover border-b border-gray-200">` : ''}
+                        <div class="p-6">
+                            <h3 class="text-xl font-bold text-gray-800">${escapeHtml(post.title)}</h3>
+                            <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
+                                <span class="bg-indigo-100 text-indigo-700 px-2 py-0.5 rounded-full font-semibold">${escapeHtml(post.category || 'Umum')}</span>
+                                <span class="inline-flex items-center gap-1">
+                                    <span class="bg-gray-100 text-gray-600 rounded-full w-5 h-5 inline-flex items-center justify-center font-bold">${escapeHtml((post.author || 'A').charAt(0).toUpperCase())}</span>
+                                    ${escapeHtml(post.author || 'Admin')}
+                                </span>
+                                <span>${escapeHtml(formatDate(post.createdAt))}</span>
+                            </div>
+                            <div class="mt-4 text-gray-600 whitespace-pre-line break-words">
+                                ${introHtml ? introHtml : '<span class="text-gray-400">Konten tidak tersedia.</span>'}
+                                ${remainderHtml}
+                                ${toggleBtn}
+                            </div>
                         </div>
-                        <div class="mt-4 text-gray-600 whitespace-pre-line break-words article-content">${renderPostContent(post.content)}</div>
-                    </div>
-                </article>
-            `).join('');
+                    </article>
+                `;
+            }).join('');
         }
+
+        postsList.addEventListener('click', (event) => {
+            const button = event.target.closest('.read-more-toggle');
+            if (!button) return;
+            const target = document.querySelector(`#${CSS.escape(button.dataset.target)}`);
+            if (!target) return;
+            const isHidden = target.classList.contains('hidden');
+            target.classList.toggle('hidden', !isHidden);
+            button.textContent = isHidden ? 'Sembunyikan' : 'Lanjutkan membaca';
+        });
 
         document.getElementById('categoryFilter').addEventListener('change', (e) => {
             const filter = e.target.value;
