@@ -304,19 +304,37 @@
                 overlay.classList.add('hidden');
                 imageError.classList.add('hidden');
             }
+            probeHeroImage(image);
         }
 
         ['heroTitle', 'heroSubtitle', 'heroImage'].forEach((id) => {
             document.getElementById(id).addEventListener('input', updateHeroPreview);
         });
 
-        // Peringatkan bila URL background tidak bisa dimuat browser
-        document.getElementById('heroPreviewBg').addEventListener('error', function () {
-            document.getElementById('heroImageError').classList.remove('hidden');
-        });
-        document.getElementById('heroPreviewBg').addEventListener('load', function () {
-            document.getElementById('heroImageError').classList.add('hidden');
-        });
+        // Peringatkan bila URL background tidak bisa dimuat browser.
+        // (Elemen <div> tidak memancarkan event error untuk background-image,
+        //  jadi gunakan objek Image terpisah untuk mengujinya.)
+        let heroImageProbe = null;
+        function probeHeroImage(url) {
+            const imageError = document.getElementById('heroImageError');
+            if (heroImageProbe) {
+                heroImageProbe.onload = null;
+                heroImageProbe.onerror = null;
+                heroImageProbe = null;
+            }
+            if (!url) {
+                imageError.classList.add('hidden');
+                return;
+            }
+            heroImageProbe = new Image();
+            heroImageProbe.onload = function () {
+                imageError.classList.add('hidden');
+            };
+            heroImageProbe.onerror = function () {
+                imageError.classList.remove('hidden');
+            };
+            heroImageProbe.src = url;
+        }
 
         async function loadSettings() {
             try {
