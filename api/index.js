@@ -227,7 +227,84 @@ app.delete('/api/posts/:id', requireDb, requireAdmin, async (req, res) => {
 });
 
 /* ================================================================
- * 6. Halaman statis: homepage publik + dashboard admin
+ * 6. Pengaturan Situs (hero homepage)
+ *    Disimpan di koleksi `settings`, dokumen `site`.
+ * ================================================================ */
+const DEFAULT_SETTINGS = {
+  hero: {
+    title: 'Selamat Datang di CMS Kami',
+    subtitle:
+      'Baca semua konten yang sudah diterbitkan oleh tim admin. Konten diperbarui secara langsung dari Firestore.',
+    image: '',
+  },
+};
+
+const settingsRef = () => db.collection('settings').doc('site');
+
+function normalizeSettings(doc) {
+  const data = (typeof doc.data === 'function' ? doc.data() : doc) || {};
+  const hero = data.hero || {};
+  return {
+    hero: {
+      title: String(hero.title || DEFAULT_SETTINGS.hero.title).trim(),
+      subtitle: String(hero.subtitle || DEFAULT_SETTINGS.hero.subtitle).trim(),
+      image: String(hero.image || '').trim(),
+    },
+    updatedAt: data.updatedAt || null,
+  };
+}
+
+// GET /api/settings (publik) -> konfigurasi hero untuk homepage
+app.get('/api/settings', requireDb, async (req, res) => {
+  try {
+    const snapshot = await settingsRef().get();
+    if (!snapshot.exists) return res.status(200).json(DEFAULT_SETTINGS);
+    res.status(200).json(normalizeSettings(snapshot));
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// PUT /api/settings (admin) -> perbarui hero (judul, teks pendukung, background)
+app.put('/api/settings', requireDb, requireAdmin, async (req, res) => {
+  try {
+    const hero = (req.body || {}).hero || {};
+    const title = hero.title !== undefined ? String(hero.title).trim() : null;
+    const subtitle = hero.subtitle !== undefined ? String(hero.subtitle).trim() : null;
+    const image = hero.image !== undefined ? String(hero.image).trim() : null;
+
+    if (title !== null) {
+      if (!title) return res.status(400).json({ error: 'Judul hero tidak boleh kosong.' });
+      if (title.length > 120) return res.status(400).json({ error: 'Judul hero maksimal 120 karakter.' });
+    }
+    if (subtitle !== null && subtitle.length > 300) {
+      return res.status(400).json({ error: 'Teks pendukung hero maksimal 300 karakter.' });
+    }
+    if (image !== null && image && !/^https?:\/\/\S+$/i.test(image)) {
+      return res
+        .status(400)
+        .json({ error: 'URL background tidak valid (harus diawali http:// atau https://).' });
+    }
+
+    const snapshot = await settingsRef().get();
+    const current = snapshot.exists ? normalizeSettings(snapshot) : DEFAULT_SETTINGS;
+    const next = {
+      hero: {
+        title: title !== null ? title : current.hero.title,
+        subtitle: subtitle !== null ? subtitle : current.hero.subtitle,
+        image: image !== null ? image : current.hero.image,
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    await settingsRef().set(next);
+    res.status(200).json(next);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/* ================================================================
+ * 7. Halaman statis: homepage publik + dashboard admin
  * ================================================================ */
 app.use(express.static(PUBLIC_DIR));
 

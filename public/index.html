@@ -25,10 +25,12 @@
     </header>
 
     <!-- Hero -->
-    <section class="bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 text-white">
-        <div class="container mx-auto px-6 py-16 max-w-4xl">
-            <h1 class="text-4xl md:text-5xl font-bold leading-tight">Selamat Datang di CMS Kami</h1>
-            <p class="mt-4 text-blue-100 text-lg max-w-2xl">
+    <section class="relative overflow-hidden text-white bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700">
+        <div id="heroBg" class="absolute inset-0 bg-cover bg-center hidden"></div>
+        <div id="heroOverlay" class="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/30 hidden"></div>
+        <div class="relative container mx-auto px-6 py-16 max-w-4xl">
+            <h1 id="heroTitle" class="text-4xl md:text-5xl font-bold leading-tight">Selamat Datang di CMS Kami</h1>
+            <p id="heroSubtitle" class="mt-4 text-blue-100 text-lg max-w-2xl">
                 Baca semua konten yang sudah diterbitkan oleh tim admin. Konten diperbarui secara langsung dari Firestore.
             </p>
             <div class="mt-6 flex items-center gap-6 text-sm text-blue-100">
@@ -139,6 +141,30 @@
             }
         }
 
+        // Muat pengaturan hero (background + caption) dari dashboard admin
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
+                if (!response.ok) return; // biarkan tampilan bawaan
+                const settings = await response.json();
+                const hero = settings.hero || {};
+                if (hero.title) document.getElementById('heroTitle').textContent = hero.title;
+                if (hero.subtitle) document.getElementById('heroSubtitle').textContent = hero.subtitle;
+                if (hero.image) {
+                    const bg = document.getElementById('heroBg');
+                    bg.style.backgroundImage = 'url(' + JSON.stringify(hero.image) + ')';
+                    bg.classList.remove('hidden');
+                    document.getElementById('heroOverlay').classList.remove('hidden');
+                    const subtitle = document.getElementById('heroSubtitle');
+                    subtitle.classList.remove('text-blue-100');
+                    subtitle.classList.add('text-gray-100');
+                }
+            } catch (error) {
+                // biarkan tampilan bawaan bila pengaturan gagal dimuat
+            }
+        }
+
+        loadSettings();
         fetchPosts();
     </script>
 </body>

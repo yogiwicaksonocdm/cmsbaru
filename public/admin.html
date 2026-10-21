@@ -81,6 +81,54 @@
                 </div>
             </div>
 
+            <!-- Pengaturan Hero Homepage -->
+            <section class="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-8">
+                <div class="flex items-center justify-between flex-wrap gap-2">
+                    <div>
+                        <h2 class="text-lg font-semibold text-gray-700">Hero Section Homepage</h2>
+                        <p class="text-sm text-gray-500">Atur background dan caption bagian atas homepage publik.</p>
+                    </div>
+                    <a href="/" target="_blank" rel="noopener" class="text-sm text-blue-600 font-semibold hover:underline">Lihat di homepage &rarr;</a>
+                </div>
+
+                <form id="heroForm" class="mt-5 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="space-y-4">
+                        <div>
+                            <label for="heroTitle" class="block text-gray-700 text-sm font-bold mb-2">Caption / Judul</label>
+                            <input type="text" id="heroTitle" maxlength="120" required placeholder="Selamat Datang di CMS Kami"
+                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label for="heroSubtitle" class="block text-gray-700 text-sm font-bold mb-2">Teks Pendukung</label>
+                            <textarea id="heroSubtitle" rows="3" maxlength="300" placeholder="Kalimat singkat di bawah judul hero"
+                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+                        <div>
+                            <label for="heroImage" class="block text-gray-700 text-sm font-bold mb-2">URL Background (gambar)</label>
+                            <input type="url" id="heroImage" placeholder="https://contoh.com/gambar.jpg"
+                                class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <p class="text-xs text-gray-400 mt-1">Kosongkan untuk memakai gradasi warna bawaan.</p>
+                        </div>
+                        <button type="submit" id="heroSaveBtn"
+                            class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition font-semibold">Simpan Hero</button>
+                    </div>
+
+                    <!-- Preview langsung -->
+                    <div>
+                        <p class="text-sm font-bold text-gray-700 mb-2">Preview</p>
+                        <div class="relative h-48 rounded-lg overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700 text-white flex items-center">
+                            <div id="heroPreviewBg" class="absolute inset-0 bg-cover bg-center hidden"></div>
+                            <div id="heroPreviewOverlay" class="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/30 hidden"></div>
+                            <div class="relative px-5">
+                                <p id="heroPreviewTitle" class="text-lg font-bold">Judul hero</p>
+                                <p id="heroPreviewSubtitle" class="text-sm text-gray-100 mt-1 line-clamp-2">Teks pendukung hero</p>
+                            </div>
+                        </div>
+                        <p id="heroImageError" class="hidden text-xs text-red-600 mt-2">Gambar tidak dapat dimuat, periksa URL background.</p>
+                    </div>
+                </form>
+            </section>
+
             <div class="grid grid-cols-1 lg:grid-cols-5 gap-8">
                 <!-- Form Konten -->
                 <section class="lg:col-span-2">
@@ -219,6 +267,7 @@
                 document.getElementById('password').value = '';
                 showDashboard();
                 fetchPosts();
+                loadSettings();
             } catch (error) {
                 loginError.textContent = error.message;
                 loginError.classList.remove('hidden');
@@ -230,6 +279,80 @@
 
         document.getElementById('logoutBtn').addEventListener('click', () => {
             showLogin('Anda telah keluar. Silakan login kembali untuk mengelola konten.');
+        });
+
+        /* ---------- Pengaturan hero homepage ---------- */
+        const heroForm = document.getElementById('heroForm');
+
+        function updateHeroPreview() {
+            const title = document.getElementById('heroTitle').value.trim();
+            const subtitle = document.getElementById('heroSubtitle').value.trim();
+            const image = document.getElementById('heroImage').value.trim();
+            document.getElementById('heroPreviewTitle').textContent = title || 'Judul hero';
+            document.getElementById('heroPreviewSubtitle').textContent = subtitle || 'Teks pendukung hero';
+
+            const bg = document.getElementById('heroPreviewBg');
+            const overlay = document.getElementById('heroPreviewOverlay');
+            const imageError = document.getElementById('heroImageError');
+            if (image) {
+                bg.style.backgroundImage = 'url(' + JSON.stringify(image) + ')';
+                bg.classList.remove('hidden');
+                overlay.classList.remove('hidden');
+            } else {
+                bg.style.backgroundImage = '';
+                bg.classList.add('hidden');
+                overlay.classList.add('hidden');
+                imageError.classList.add('hidden');
+            }
+        }
+
+        ['heroTitle', 'heroSubtitle', 'heroImage'].forEach((id) => {
+            document.getElementById(id).addEventListener('input', updateHeroPreview);
+        });
+
+        // Peringatkan bila URL background tidak bisa dimuat browser
+        document.getElementById('heroPreviewBg').addEventListener('error', function () {
+            document.getElementById('heroImageError').classList.remove('hidden');
+        });
+        document.getElementById('heroPreviewBg').addEventListener('load', function () {
+            document.getElementById('heroImageError').classList.add('hidden');
+        });
+
+        async function loadSettings() {
+            try {
+                const response = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
+                if (!response.ok) return; // database belum siap: biarkan kosong
+                const settings = await response.json();
+                const hero = settings.hero || {};
+                document.getElementById('heroTitle').value = hero.title || '';
+                document.getElementById('heroSubtitle').value = hero.subtitle || '';
+                document.getElementById('heroImage').value = hero.image || '';
+                updateHeroPreview();
+            } catch (error) {
+                console.error('Gagal memuat pengaturan:', error);
+            }
+        }
+
+        heroForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            try {
+                const response = await apiFetch('/api/settings', {
+                    method: 'PUT',
+                    headers: authHeaders(),
+                    body: JSON.stringify({
+                        hero: {
+                            title: document.getElementById('heroTitle').value,
+                            subtitle: document.getElementById('heroSubtitle').value,
+                            image: document.getElementById('heroImage').value,
+                        },
+                    }),
+                });
+                const data = await response.json();
+                if (!response.ok) throw new Error(data.error || 'Gagal menyimpan pengaturan hero.');
+                showAlert('success', 'Hero section homepage diperbarui.');
+            } catch (error) {
+                if (error.message !== 'unauthorized') showAlert('error', error.message);
+            }
         });
 
         /* ---------- Muat & render postingan ---------- */
@@ -387,6 +510,7 @@
                 if (!response.ok) return showLogin('Sesi berakhir. Silakan login kembali.');
                 showDashboard();
                 fetchPosts();
+                loadSettings();
             } catch (error) {
                 // 401 sudah ditangani apiFetch -> showLogin
             }

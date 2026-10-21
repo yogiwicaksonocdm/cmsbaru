@@ -33,6 +33,9 @@ function createMockFirestore() {
               if (!store.has(id)) throw new Error(`Dokumen ${id} tidak ditemukan.`);
               store.set(id, { ...store.get(id), ...patch });
             },
+            async set(data) {
+              store.set(id, { ...data });
+            },
             async delete() {
               store.delete(id);
             },

@@ -6,8 +6,8 @@ CMS sederhana dengan **homepage publik** (hanya menampilkan konten yang sudah di
 
 | URL       | Akses | Keterangan                                        |
 | --------- | ----- | ------------------------------------------------- |
-| `/`       | Publik | Homepage: daftar postingan yang sudah diterbitkan |
-| `/admin`  | Admin  | Dashboard: tambah, edit, terbitkan, hapus konten  |
+| `/`       | Publik | Homepage: hero (background + caption) dan daftar postingan yang sudah diterbitkan |
+| `/admin`  | Admin  | Dashboard: tambah, edit, terbitkan, hapus konten, dan atur hero homepage |
 
 ## API
 
@@ -20,6 +20,8 @@ CMS sederhana dengan **homepage publik** (hanya menampilkan konten yang sudah di
 | POST   | `/api/posts`           | Admin  | Buat postingan (default: draf)          |
 | PUT    | `/api/posts/:id`       | Admin  | Ubah judul/konten/penulis/status terbit |
 | DELETE | `/api/posts/:id`       | Admin  | Hapus postingan                         |
+| GET    | `/api/settings`        | Publik | Pengaturan hero homepage                |
+| PUT    | `/api/settings`        | Admin  | Ubah hero: caption, teks pendukung, background |
 
 Semua endpoint admin memerlukan header `Authorization: Bearer <token>` hasil login.
 
