@@ -7,6 +7,50 @@
     <meta name="description" content="Homepage publik dari Node.js CMS berbasis Firestore">
     <!-- Tailwind CSS untuk styling cepat -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* ===== Animasi hero: judul menyusup per kata, kursor mesin ketik, goyangan lembut ===== */
+        @keyframes heroWordIn {
+            from { opacity: 0; transform: translateY(1.4rem); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .hero-word {
+            display: inline-block;
+            opacity: 0;
+            animation: heroWordIn 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        }
+
+        @keyframes heroFloat {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-0.5rem); }
+        }
+        .hero-caption { animation: heroFloat 7s ease-in-out infinite; }
+
+        @keyframes heroCursorBlink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+        .hero-cursor {
+            display: inline-block;
+            width: 2px;
+            height: 1em;
+            margin-left: 2px;
+            vertical-align: -0.12em;
+            background: currentColor;
+            animation: heroCursorBlink 0.9s step-end infinite;
+        }
+
+        @keyframes heroGlow {
+            0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.45; }
+            50% { transform: translate(3rem, 2rem) scale(1.15); opacity: 0.8; }
+        }
+        .hero-glow { animation: heroGlow 12s ease-in-out infinite; }
+
+        /* Hormati preferensi pengguna mengurangi animasi */
+        @media (prefers-reduced-motion: reduce) {
+            .hero-word { animation: none; opacity: 1; transform: none; }
+            .hero-caption, .hero-glow, .hero-cursor { animation: none; }
+        }
+    </style>
 </head>
 <body class="bg-gray-50 font-sans leading-relaxed tracking-normal text-gray-800">
 
@@ -28,12 +72,16 @@
     <section class="relative overflow-hidden text-white bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700">
         <div id="heroBg" class="absolute inset-0 bg-cover bg-center hidden"></div>
         <div id="heroOverlay" class="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/30 hidden"></div>
-        <div class="relative container mx-auto px-6 py-16 max-w-4xl">
-            <h1 id="heroTitle" class="text-4xl md:text-5xl font-bold leading-tight">Selamat Datang di CMS Kami</h1>
-            <p id="heroSubtitle" class="mt-4 text-blue-100 text-lg max-w-2xl">
-                Baca semua konten yang sudah diterbitkan oleh tim admin. Konten diperbarui secara langsung dari Firestore.
-            </p>
-            <div class="mt-6 flex items-center gap-6 text-sm text-blue-100">
+        <!-- Efek cahaya lembut yang bergerak di latar hero -->
+        <div class="absolute -top-24 -left-24 w-96 h-96 bg-white/10 rounded-full blur-3xl hero-glow"></div>
+        <div class="relative container mx-auto px-6 py-24 md:py-40 max-w-4xl min-h-[55vh] flex flex-col justify-center">
+            <div class="hero-caption">
+                <h1 id="heroTitle" class="text-4xl sm:text-5xl lg:text-6xl font-bold leading-tight">Selamat Datang di CMS Kami</h1>
+                <p id="heroSubtitle" class="mt-5 text-blue-100 text-lg md:text-2xl max-w-2xl min-h-[3.75rem]">
+                    Baca semua konten yang sudah diterbitkan oleh tim admin. Konten diperbarui secara langsung dari Firestore.
+                </p>
+            </div>
+            <div class="mt-10 flex items-center gap-6 text-sm text-blue-100">
                 <span><span id="postCount" class="text-white font-bold text-xl">–</span> konten terbit</span>
                 <span class="hidden sm:inline">Diperbarui: <span id="lastUpdated">–</span></span>
             </div>
@@ -141,6 +189,65 @@
             }
         }
 
+        // ===== Hero bergerak: judul menyusup per kata + subtitle efek mesin ketik =====
+        const heroTitleEl = document.getElementById('heroTitle');
+        const heroSubtitleEl = document.getElementById('heroSubtitle');
+        const HERO_DEFAULT = {
+            title: heroTitleEl.textContent.trim(),
+            subtitle: heroSubtitleEl.textContent.trim(),
+        };
+        let heroRendered = { title: '', subtitle: '' };
+        let typewriterTimer = null;
+        let typewriterToken = 0;
+
+        function prefersReducedMotion() {
+            return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        }
+
+        function animateHero(title, subtitle) {
+            if (heroRendered.title === title && heroRendered.subtitle === subtitle) return;
+            heroRendered = { title, subtitle };
+
+            // Judul: setiap kata menyusup ke atas secara bergantian
+            heroTitleEl.innerHTML =
+                title
+                    .split(/\s+/)
+                    .filter(Boolean)
+                    .map((word, i) => `<span class="hero-word" style="animation-delay:${Math.min(i * 70, 700)}ms">${escapeHtml(word)}</span>`)
+                    .join(' ') || '&nbsp;';
+
+            // Subtitle: efek mesin ketik dengan kursor berkedip
+            heroSubtitleEl.setAttribute('aria-label', subtitle);
+            typewriterToken += 1;
+            const token = typewriterToken;
+            if (typewriterTimer) {
+                clearInterval(typewriterTimer);
+                typewriterTimer = null;
+            }
+
+            if (prefersReducedMotion()) {
+                heroSubtitleEl.textContent = subtitle;
+                return;
+            }
+
+            heroSubtitleEl.innerHTML =
+                '<span id="heroTyped"></span><span class="hero-cursor" aria-hidden="true">&nbsp;</span>';
+            const typedEl = document.getElementById('heroTyped');
+            let i = 0;
+            typewriterTimer = setInterval(() => {
+                if (token !== typewriterToken) {
+                    clearInterval(typewriterTimer);
+                    return;
+                }
+                i += 1;
+                typedEl.textContent = subtitle.slice(0, i);
+                if (i >= subtitle.length) {
+                    clearInterval(typewriterTimer);
+                    typewriterTimer = null;
+                }
+            }, 22);
+        }
+
         // Muat pengaturan hero (background + caption) dari dashboard admin
         async function loadSettings() {
             try {
@@ -148,8 +255,7 @@
                 if (!response.ok) return; // biarkan tampilan bawaan
                 const settings = await response.json();
                 const hero = settings.hero || {};
-                if (hero.title) document.getElementById('heroTitle').textContent = hero.title;
-                if (hero.subtitle) document.getElementById('heroSubtitle').textContent = hero.subtitle;
+                animateHero(hero.title || HERO_DEFAULT.title, hero.subtitle || HERO_DEFAULT.subtitle);
                 if (hero.image) {
                     const bg = document.getElementById('heroBg');
                     bg.style.backgroundImage = 'url(' + JSON.stringify(hero.image) + ')';
@@ -164,6 +270,7 @@
             }
         }
 
+        animateHero(HERO_DEFAULT.title, HERO_DEFAULT.subtitle);
         loadSettings();
         fetchPosts();
     </script>
