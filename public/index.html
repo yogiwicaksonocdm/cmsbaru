@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Beranda | Node.js CMS</title>
     <meta name="description" content="Homepage publik dari Node.js CMS berbasis Firestore">
-    <!-- Tailwind CSS untuk styling cepat -->
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* ===== Animasi hero: judul menyusup per kata, kursor mesin ketik, goyangan lembut ===== */
         @keyframes heroWordIn {
             from { opacity: 0; transform: translateY(1.4rem); }
             to { opacity: 1; transform: translateY(0); }
@@ -89,7 +87,6 @@
             display: none;
         }
 
-        /* Hormati preferensi pengguna mengurangi animasi */
         @media (prefers-reduced-motion: reduce) {
             .hero-word { animation: none; opacity: 1; transform: none; }
             .hero-caption, .hero-glow, .hero-cursor { animation: none; }
@@ -97,8 +94,6 @@
     </style>
 </head>
 <body class="bg-gray-50 font-sans leading-relaxed tracking-normal text-gray-800">
-
-    <!-- Header -->
     <header class="bg-white/90 backdrop-blur border-b border-gray-200 sticky top-0 z-10">
         <div class="container mx-auto px-6 py-4 max-w-4xl flex items-center justify-between">
             <a href="/" class="flex items-center gap-2">
@@ -112,11 +107,9 @@
         </div>
     </header>
 
-    <!-- Hero -->
     <section class="relative overflow-hidden text-white bg-gradient-to-br from-blue-700 via-blue-600 to-indigo-700">
         <div id="heroBg" class="absolute inset-0 bg-cover bg-center hidden"></div>
         <div id="heroOverlay" class="absolute inset-0 bg-gradient-to-r from-black/75 via-black/55 to-black/30 hidden"></div>
-        <!-- Efek cahaya lembut yang bergerak di latar hero -->
         <div class="absolute -top-24 -left-24 w-96 h-96 bg-white/10 rounded-full blur-3xl hero-glow"></div>
         <div class="relative container mx-auto px-6 py-24 md:py-40 max-w-4xl min-h-[55vh] flex flex-col justify-center">
             <div class="hero-caption">
@@ -132,12 +125,10 @@
         </div>
     </section>
 
-    <!-- Daftar Konten Publik -->
     <main class="container mx-auto px-6 py-10 max-w-4xl">
         <div class="flex items-center justify-between flex-wrap gap-3 mb-6">
             <h2 class="text-2xl font-bold text-gray-800">Konten Terbaru</h2>
-            <select id="categoryFilter" aria-label="Filter kategori"
-                class="hidden px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <select id="categoryFilter" aria-label="Filter kategori" class="hidden px-3 py-2 border rounded-lg text-sm bg-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                 <option value="">Semua kategori</option>
             </select>
         </div>
@@ -170,7 +161,6 @@
         const statusBox = document.getElementById('statusBox');
         document.getElementById('year').textContent = new Date().getFullYear();
 
-        // Helper untuk mencegah XSS dasar
         function escapeHtml(text) {
             return String(text ?? '')
                 .replace(/&/g, '&amp;')
@@ -196,10 +186,7 @@
         }
 
         function renderContentBlock(text) {
-            const normalized = String(text ?? '')
-                .replace(/\r\n/g, '\n')
-                .trim();
-
+            const normalized = String(text ?? '').replace(/\r\n/g, '\n').trim();
             if (!normalized) return '';
             return escapeHtml(normalized).replace(/\n/g, '<br>');
         }
@@ -215,7 +202,6 @@
 
         let allPosts = [];
 
-        // Isi dropdown filter kategori dari data yang ada
         function updateCategoryFilter(posts) {
             const filter = document.getElementById('categoryFilter');
             const categories = [...new Set(posts.map(p => p.category || 'Umum'))].sort();
@@ -243,14 +229,14 @@
             postsList.innerHTML = posts.map(post => {
                 const { intro, rest } = splitByPageBreak(post.content);
                 const introHtml = renderContentBlock(intro);
-                const remainderHtml = rest ? `<div class="read-more-content hidden">${renderContentBlock(rest)}</div>` : '';
+                const restHtml = rest ? `<div id="read-more-${post.id}" class="read-more-content hidden">${renderContentBlock(rest)}</div>` : '';
                 const toggleBtn = rest
-                    ? '<button type="button" class="read-more-toggle" data-target="read-more-' + escapeHtml(post.id) + '">Lanjutkan membaca</button>'
+                    ? `<button type="button" class="read-more-toggle" data-post-id="${post.id}">Lanjutkan membaca</button>`
                     : '';
 
                 return `
-                    <article class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition" data-post-id="${escapeHtml(post.id)}">
-                        ${post.image || post.thumbnail ? `<img src="${escapeHtml(post.image || post.thumbnail)}" alt="${escapeHtml(post.title)}" class="w-full h-56 object-cover border-b border-gray-200">` : ''}
+                    <article class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md transition" data-post-id="${post.id}">
+                        ${post.image || post.thumbnail ? `<img src="${post.image || post.thumbnail}" alt="${post.title}" class="w-full h-56 object-cover border-b border-gray-200">` : ''}
                         <div class="p-6">
                             <h3 class="text-xl font-bold text-gray-800">${escapeHtml(post.title)}</h3>
                             <div class="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-400">
@@ -263,7 +249,7 @@
                             </div>
                             <div class="mt-4 text-gray-600 whitespace-pre-line break-words">
                                 ${introHtml ? introHtml : '<span class="text-gray-400">Konten tidak tersedia.</span>'}
-                                ${remainderHtml}
+                                ${restHtml}
                                 ${toggleBtn}
                             </div>
                         </div>
@@ -275,10 +261,11 @@
         postsList.addEventListener('click', (event) => {
             const button = event.target.closest('.read-more-toggle');
             if (!button) return;
-            const target = document.querySelector(`#${CSS.escape(button.dataset.target)}`);
-            if (!target) return;
-            const isHidden = target.classList.contains('hidden');
-            target.classList.toggle('hidden', !isHidden);
+            const postId = button.dataset.postId;
+            const content = document.getElementById(`read-more-${postId}`);
+            if (!content) return;
+            const isHidden = content.classList.contains('hidden');
+            content.classList.toggle('hidden', !isHidden);
             button.textContent = isHidden ? 'Sembunyikan' : 'Lanjutkan membaca';
         });
 
@@ -290,14 +277,12 @@
         async function fetchPosts() {
             try {
                 const response = await fetch('/api/posts', { headers: { Accept: 'application/json' } });
-
                 if (response.status === 503) {
                     postsList.innerHTML = '';
                     showStatus('error', 'Konten belum tersedia: konfigurasi Firebase (Firestore) di server belum diatur oleh admin.');
                     return;
                 }
                 if (!response.ok) throw new Error(`HTTP ${response.status}`);
-
                 const posts = await response.json();
                 allPosts = posts;
                 document.getElementById('postCount').textContent = posts.length;
@@ -311,7 +296,6 @@
             }
         }
 
-        // ===== Hero bergerak: judul menyusup per kata + subtitle efek mesin ketik =====
         const heroTitleEl = document.getElementById('heroTitle');
         const heroSubtitleEl = document.getElementById('heroSubtitle');
         const HERO_DEFAULT = {
@@ -330,7 +314,6 @@
             if (heroRendered.title === title && heroRendered.subtitle === subtitle) return;
             heroRendered = { title, subtitle };
 
-            // Judul: setiap kata menyusup ke atas secara bergantian
             heroTitleEl.innerHTML =
                 title
                     .split(/\s+/)
@@ -338,7 +321,6 @@
                     .map((word, i) => `<span class="hero-word" style="animation-delay:${Math.min(i * 70, 700)}ms">${escapeHtml(word)}</span>`)
                     .join(' ') || '&nbsp;';
 
-            // Subtitle: efek mesin ketik dengan kursor berkedip
             heroSubtitleEl.setAttribute('aria-label', subtitle);
             typewriterToken += 1;
             const token = typewriterToken;
@@ -370,11 +352,10 @@
             }, 22);
         }
 
-        // Muat pengaturan hero (background + caption) dari dashboard admin
         async function loadSettings() {
             try {
                 const response = await fetch('/api/settings', { headers: { Accept: 'application/json' } });
-                if (!response.ok) return; // biarkan tampilan bawaan
+                if (!response.ok) return;
                 const settings = await response.json();
                 const hero = settings.hero || {};
                 animateHero(hero.title || HERO_DEFAULT.title, hero.subtitle || HERO_DEFAULT.subtitle);
