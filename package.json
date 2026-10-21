@@ -5,7 +5,9 @@
   "main": "api/index.js",
   "scripts": {
     "start": "node api/index.js",
-    "dev": "node --watch api/index.js"
+    "dev": "node --watch api/index.js",
+    "preview": "node scripts/dev-preview.js",
+    "test": "node scripts/smoke-test.js"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
