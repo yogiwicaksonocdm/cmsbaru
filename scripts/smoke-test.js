@@ -136,6 +136,53 @@ async function main() {
   assert.strictEqual(res.json.length, 1, 'dashboard harus melihat semua post');
   console.log('✓ GET /api/admin/posts (daftar lengkap)');
 
+  // 5a. Alur komentar: kirim (pending) -> tak tampil publik -> moderasi -> tampil
+  res = await request('GET', `/api/posts/${postId}/comments`);
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.json.length, 0, 'post baru belum punya komentar');
+  res = await request('POST', `/api/posts/${postId}/comments`, { body: { name: '', content: '' } });
+  assert.strictEqual(res.status, 400, 'komentar kosong harus 400');
+  res = await request('POST', `/api/posts/${postId}/comments`, {
+    body: { name: 'Pengunjung', content: 'Komentar pertama dari pengunjung.' },
+  });
+  assert.strictEqual(res.status, 201, 'kirim komentar harus 201');
+  const commentId = res.json.id;
+  assert.strictEqual(res.json.status, 'pending', 'komentar baru harus pending');
+  res = await request('POST', `/api/posts/${postId}/comments`, { body: { name: 'Pengunjung', content: 'x'.repeat(1001) } });
+  assert.strictEqual(res.status, 400, 'komentar >1000 karakter harus 400');
+  res = await request('GET', `/api/posts/${postId}/comments`);
+  assert.strictEqual(res.json.length, 0, 'komentar pending tidak boleh tampil di publik');
+  res = await request('GET', '/api/admin/comments');
+  assert.strictEqual(res.status, 401, 'daftar komentar admin tanpa token harus 401');
+  res = await request('GET', '/api/admin/comments', { token });
+  assert.strictEqual(res.status, 200);
+  assert.strictEqual(res.json.length, 1, 'moderasi harus melihat komentar pending');
+  assert.strictEqual(res.json[0].name, 'Pengunjung');
+  res = await request('PATCH', `/api/admin/comments/${commentId}`, {
+    body: { status: 'italic' },
+    token,
+  });
+  assert.strictEqual(res.status, 400, 'status moderasi tidak valid harus 400');
+  res = await request('PATCH', `/api/admin/comments/${commentId}`, {
+    body: { status: 'approved' },
+    token,
+  });
+  assert.strictEqual(res.status, 200, 'approve komentar harus 200');
+  assert.strictEqual(res.json.status, 'approved');
+  res = await request('GET', `/api/posts/${postId}/comments`);
+  assert.strictEqual(res.json.length, 1, 'komentar disetujui harus tampil di publik');
+  assert.strictEqual(res.json[0].name, 'Pengunjung');
+  res = await request('PATCH', `/api/admin/comments/${commentId}`, {
+    body: { status: 'rejected' },
+    token,
+  });
+  assert.strictEqual(res.status, 200);
+  res = await request('GET', `/api/posts/${postId}/comments`);
+  assert.strictEqual(res.json.length, 0, 'komentar ditolak tidak boleh tampil di publik');
+  res = await request('POST', '/api/posts/tidak-ada/comments', { body: { name: 'Anonim', content: 'tes' } });
+  assert.strictEqual(res.status, 404, 'komentar pada post yang tidak ada harus 404');
+  console.log('✓ alur komentar (kirim -> pending -> moderasi -> tampil/cabut)');
+
   res = await request('DELETE', `/api/posts/${postId}`, { token });
   assert.strictEqual(res.status, 200);
   res = await request('GET', '/api/posts');

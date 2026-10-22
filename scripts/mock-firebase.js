@@ -9,50 +9,85 @@
 const path = require('path');
 
 function createMockFirestore() {
-  const store = new Map(); // id -> data
-  let counter = 0;
+  const collections = new Map(); // nama koleksi -> Map(id -> data)
+  const storeOf = (name) => {
+    if (!collections.has(name)) collections.set(name, new Map());
+    return collections.get(name);
+  };
 
   const makeSnapshot = (id, data) => ({ id, exists: true, data: () => ({ ...data }) });
 
-  return {
-    collection() {
+  function collection(name) {
+    const store = storeOf(name);
+
+    function runQuery(records) {
       return {
-        async add(data) {
-          const id = `mock-${String(++counter).padStart(4, '0')}`;
-          store.set(id, { ...data });
-          return { id };
+        where(field, _op, value) {
+          if (_op !== '==') throw new Error(`Operator Firestore tidak didukung mock: ${_op}`);
+          return runQuery(records.filter(([, data]) => data[field] === value));
         },
-        doc(id) {
-          return {
-            id,
-            async get() {
-              if (!store.has(id)) return { id, exists: false, data: () => undefined };
-              return makeSnapshot(id, store.get(id));
-            },
-            async update(patch) {
-              if (!store.has(id)) throw new Error(`Dokumen ${id} tidak ditemukan.`);
-              store.set(id, { ...store.get(id), ...patch });
-            },
-            async set(data) {
-              store.set(id, { ...data });
-            },
-            async delete() {
-              store.delete(id);
-            },
-          };
+        orderBy(field) {
+          const next = [...records].sort((a, b) =>
+            String(b[1][field] || '').localeCompare(String(a[1][field] || '')),
+          );
+          return runQuery(next);
         },
-        orderBy() {
-          return {
-            async get() {
-              const docs = [...store.entries()]
-                .map(([id, data]) => makeSnapshot(id, data))
-                .sort((a, b) => String(b.data().createdAt || '').localeCompare(String(a.data().createdAt || '')));
-              return { docs };
-            },
-          };
+        async get() {
+          return { docs: records.map(([id, data]) => makeSnapshot(id, data)) };
         },
       };
-    },
+    }
+
+    return {
+      async add(data) {
+        const id = `mock-${String(++counter).padStart(4, '0')}`;
+        store.set(id, { ...data });
+        return { id };
+      },
+      doc(id) {
+        return {
+          id,
+          async get() {
+            if (!store.has(id)) return { id, exists: false, data: () => undefined };
+            return makeSnapshot(id, store.get(id));
+          },
+          async update(patch) {
+            if (!store.has(id)) throw new Error(`Dokumen ${id} tidak ditemukan.`);
+            store.set(id, { ...store.get(id), ...patch });
+          },
+          async set(data) {
+            store.set(id, { ...data });
+          },
+          async delete() {
+            store.delete(id);
+          },
+        };
+      },
+      where(field, op, value) {
+        const records = [...store.entries()].filter(
+          ([, data]) =>
+            op === '==' &&
+            data[field] === value,
+        );
+        return runQuery(records);
+      },
+      orderBy(field) {
+        const records = [...store.entries()].sort((a, b) =>
+          String(b[1][field] || '').localeCompare(String(a[1][field] || '')),
+        );
+        return runQuery(records);
+      },
+      // get() langsung tanpa query (dipakai beberapa pola lama)
+      async get() {
+        return { docs: [...store.entries()].map(([id, data]) => makeSnapshot(id, data)) };
+      },
+    };
+  }
+
+  let counter = 0;
+  return {
+    collection,
+    _collections: collections, // untuk pemeriksaan/seed manual
   };
 }
 

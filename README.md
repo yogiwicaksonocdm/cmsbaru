@@ -6,8 +6,8 @@ CMS sederhana dengan **homepage publik** (hanya menampilkan konten yang sudah di
 
 | URL       | Akses | Keterangan                                        |
 | --------- | ----- | ------------------------------------------------- |
-| `/`       | Publik | Homepage: hero (background + caption) dan daftar postingan yang sudah diterbitkan |
-| `/admin`  | Admin  | Dashboard dengan dua tab: **Postingan** (tulis/edit dengan kategori & generate konten otomatis) dan **Pengaturan** (hero homepage) |
+| `/`       | Publik | Homepage: hero (background + caption), daftar postingan yang sudah diterbitkan, dan diskusi komentar per postingan |
+| `/admin`  | Admin  | Dashboard dengan tiga tab: **Postingan** (tulis/edit dengan kategori & generate konten otomatis), **Komentar** (moderasi) dan **Pengaturan** (hero homepage) |
 
 ## API
 
@@ -23,10 +23,16 @@ CMS sederhana dengan **homepage publik** (hanya menampilkan konten yang sudah di
 | DELETE | `/api/posts/:id`       | Admin  | Hapus postingan                         |
 | GET    | `/api/settings`        | Publik | Pengaturan hero homepage                |
 | PUT    | `/api/settings`        | Admin  | Ubah hero: caption, teks pendukung, background |
+| GET    | `/api/posts/:id/comments` | Publik | Komentar **disetujui** untuk sebuah postingan |
+| POST   | `/api/posts/:id/comments` | Publik | Kirim komentar (nama ≥2 char, isi ≥3 & ≤1000 char); masuk sebagai *pending* |
+| GET    | `/api/admin/comments`  | Admin  | Semua komentar (semua status) untuk moderasi |
+| PATCH  | `/api/admin/comments/:id` | Admin | Moderasi komentar: `{ status: "approved|rejected|pending" }` |
 
 Semua endpoint admin memerlukan header `Authorization: Bearer <token>` hasil login.
 
 Setiap postingan memiliki `category` (opsional, default `Umum`) yang tampil sebagai chip di homepage lengkap dengan dropdown filter kategori. Tombol **Generate Konten** di editor memanggil `/api/posts/generate`: hasil AI bila `AI_API_KEY` di-set, dan generator template lokal bila tidak ada key atau AI sedang gagal.
+
+Setiap postingan juga punya bagian **Komentar** dengan toggle 💬 di homepage: pengunjung bisa membaca komentar yang sudah disetujui dan mengirim komentar baru yang berstatus *pending* (pesan "menunggu moderasi admin" ditampilkan setelah terkirim). Admin memoderasinya lewat tab **Komentar** di dashboard: Setujui / Tolak / kembalikan ke *pending*.
 
 ## Setup lokal
 

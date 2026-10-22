@@ -135,12 +135,16 @@ app.get('/api/posts', requireDb, async (req, res) => {
 
 app.get('/api/posts/:id/comments', requireDb, async (req, res) => {
   try {
+    // Satu equality filter + pengurutan di sisi aplikasi
+    // agar tidak butuh composite index Firestore (postId, status, createdAt).
     const snapshot = await db.collection('comments')
       .where('postId', '==', req.params.id)
-      .where('status', '==', 'approved')
-      .orderBy('createdAt', 'desc')
       .get();
-    res.status(200).json(snapshot.docs.map(normalizeComment));
+    const comments = snapshot.docs
+      .map(normalizeComment)
+      .filter((c) => c.status === 'approved')
+      .sort((a, b) => String(b.createdAt || '').localeCompare(String(a.createdAt || '')));
+    res.status(200).json(comments);
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

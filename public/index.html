@@ -252,13 +252,76 @@
                                 ${restHtml}
                                 ${toggleBtn}
                             </div>
+                            <div class="mt-5 pt-4 border-t border-gray-100">
+                                <button type="button" class="comments-toggle inline-flex items-center gap-1.5 text-sm text-blue-600 font-semibold hover:underline" data-post-id="${post.id}">💬 Komentar</button>
+                                <div id="comments-${post.id}" class="comments-panel hidden mt-4 space-y-3"></div>
+                            </div>
                         </div>
                     </article>
                 `;
             }).join('');
         }
 
+        function renderCommentItem(comment) {
+            return `
+                <div class="bg-gray-50 rounded-lg p-3 break-words">
+                    <p class="text-xs text-gray-400 flex items-center gap-2">
+                        <span class="font-bold text-gray-600">${escapeHtml(comment.name || 'Pengguna')}</span>
+                        <span>&middot;</span>
+                        <span>${escapeHtml(formatDate(comment.createdAt))}</span>
+                    </p>
+                    <p class="mt-1.5 text-sm text-gray-700 whitespace-pre-line">${escapeHtml(comment.content)}</p>
+                </div>
+            `;
+        }
+
+        function commentFormHtml(postId) {
+            return `
+                <form class="comment-form space-y-2" data-post-id="${postId}">
+                    <input type="text" name="author" required minlength="2" maxlength="60" placeholder="Nama Anda"
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300">
+                    <textarea name="content" rows="3" required minlength="3" maxlength="1000" placeholder="Tulis komentar..."
+                        class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-300"></textarea>
+                    <button type="submit"
+                        class="rounded-lg bg-indigo-600 text-white text-sm font-semibold px-4 py-2 hover:bg-indigo-700 disabled:opacity-50">Kirim Komentar</button>
+                    <p class="comment-msg hidden text-sm"></p>
+                </form>
+            `;
+        }
+
+        async function loadComments(postId) {
+            const panel = document.getElementById(`comments-${postId}`);
+            if (!panel) return;
+            panel.innerHTML = '<p class="text-xs text-gray-400">Memuat komentar...</p>';
+            try {
+                const response = await fetch(`/api/posts/${postId}/comments`, { headers: { Accept: 'application/json' } });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const comments = await response.json();
+                panel.innerHTML =
+                    (comments.length
+                        ? comments.map(renderCommentItem).join('')
+                        : '<p class="text-sm text-gray-400">Belum ada komentar. Jadilah yang pertama!</p>')
+                    + commentFormHtml(postId);
+            } catch (error) {
+                console.error('Gagal memuat komentar:', error);
+                panel.innerHTML = commentFormHtml(postId) + '<p class="text-sm text-red-600">Komentar tidak dapat dimuat.</p>';
+            }
+        }
+
         postsList.addEventListener('click', (event) => {
+            const commentsToggle = event.target.closest('.comments-toggle');
+            if (commentsToggle) {
+                const postId = commentsToggle.dataset.postId;
+                const panel = document.getElementById(`comments-${postId}`);
+                if (!panel) return;
+                const shouldOpen = panel.classList.contains('hidden');
+                panel.classList.toggle('hidden', !shouldOpen);
+                if (shouldOpen && !panel.dataset.loaded) {
+                    panel.dataset.loaded = '1';
+                    loadComments(postId);
+                }
+                return;
+            }
             const button = event.target.closest('.read-more-toggle');
             if (!button) return;
             const postId = button.dataset.postId;
@@ -267,6 +330,45 @@
             const isHidden = content.classList.contains('hidden');
             content.classList.toggle('hidden', !isHidden);
             button.textContent = isHidden ? 'Sembunyikan' : 'Lanjutkan membaca';
+        });
+
+        postsList.addEventListener('submit', async (event) => {
+            const form = event.target.closest('.comment-form');
+            if (!form) return;
+            event.preventDefault();
+
+            const postId = form.dataset.postId;
+            const msgEl = form.querySelector('.comment-msg');
+            const submitBtn = form.querySelector('button[type="submit"]');
+            const name = form.elements['author'].value.trim();
+            const content = form.elements['content'].value.trim();
+
+            const show = (className, text) => {
+                msgEl.className = `comment-msg text-sm ${className}`;
+                msgEl.textContent = text;
+                msgEl.classList.remove('hidden');
+            };
+
+            try {
+                submitBtn.disabled = true;
+                const response = await fetch(`/api/posts/${postId}/comments`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+                    body: JSON.stringify({ name, content }),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) {
+                    show('text-red-600', data.error || `Gagal mengirim komentar (HTTP ${response.status}).`);
+                    return;
+                }
+                form.elements['content'].value = '';
+                show('text-green-700', 'Komentar terkirim dan menunggu moderasi admin. Terima kasih!');
+            } catch (error) {
+                console.error('Gagal mengirim komentar:', error);
+                show('text-red-600', 'Gagal mengirim komentar. Coba lagi.');
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
         });
 
         document.getElementById('categoryFilter').addEventListener('change', (e) => {
